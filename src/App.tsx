@@ -876,21 +876,467 @@ const titleFor = (page: Page) => ({ home: "Find your next quest", tasks: "Your q
 const subtitleFor = (page: Page) => ({ home: "Smart matches based on your skills and location.", tasks: "Stay on top of every task, application, and milestone.", post: "Share a clear task and find the right person faster.", chat: "Coordinate safely without leaving QuestKarte.", account: "Your reputation grows with every completed quest.", settings: "Manage your profile, preferences, and session.", staff: "Role-based tools for a safe, trusted marketplace." })[page];
 const categoryIcon = (category: string) => ({ Cleaning: "⌁", Delivery: "→", Tutoring: "⌘", Design: "✦", Errands: "◌", Other: "◇" })[category] || "◇";
 
+/* ─── Timeline stepper helper ─────────────────────────────────────── */
+type TLStage = { label: string; date?: string; done: boolean; current: boolean };
+function TaskTimeline({ stages }: { stages: TLStage[] }) {
+  const CheckIcon = () => <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>;
+  return (
+    <div className="task-timeline">
+      {stages.map((stage, i) => (
+        <div key={i} className={`tl-step ${stage.done ? "done" : ""} ${stage.current ? "current" : ""}`.trim()}>
+          <div className="tl-dot">{stage.done && <CheckIcon />}{!stage.done && stage.current && <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /></svg>}</div>
+          <div className="tl-label"><strong>{stage.label}</strong>{stage.date && <small>{stage.date}</small>}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function fmtDate(iso: string | null | undefined) {
+  if (!iso) return undefined;
+  return new Date(iso).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+}
+
+/* ─── Payment receipt card ─────────────────────────────────────────── */
+function PaymentReceiptCard({ task }: { task: { title: string; commission_amount: number | null; currency: string; payment_type: string; completed_at: string | null; poster_name?: string; provider_name?: string } }) {
+  const isGcash = task.payment_type === "gcash";
+  const amount = Number(task.commission_amount || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 });
+  const completedDate = task.completed_at ? new Date(task.completed_at).toLocaleString("en-PH", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+  if (!isGcash) {
+    return (
+      <div className="cash-meetup-card">
+        <svg viewBox="0 0 24 24"><path d="M17 11V7a5 5 0 0 0-10 0v4" /><rect x="3" y="11" width="18" height="11" rx="2" /><circle cx="12" cy="16" r="1" /></svg>
+        <div className="cash-meetup-body">
+          <strong>Ready to meet up for cash payment</strong>
+          <p>The job is confirmed done. Use the task chat to arrange a time and place to complete the cash exchange safely.</p>
+          <span className="tlc-meta"><span className="tlc-reward">₱ {amount}</span> · agreed amount</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="payment-receipt">
+      <div className="payment-receipt-header">
+        <svg viewBox="0 0 24 24" style={{stroke:"#fff",fill:"none",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+        <div><strong>Payment Released</strong><span>QuestKarte Transaction Receipt</span></div>
+      </div>
+      <div className="payment-receipt-body">
+        <div className="receipt-row receipt-amount-row"><span>Amount</span><strong>₱ {amount}</strong></div>
+        <div className="receipt-row"><span>Task</span><strong>{task.title}</strong></div>
+        <div className="receipt-row"><span>Method</span><strong>GCash (simulated escrow)</strong></div>
+        <div className="receipt-row"><span>Status</span><strong style={{color:"#1a7a45"}}>✓ Released to provider</strong></div>
+        <div className="receipt-row"><span>Completed</span><strong>{completedDate}</strong></div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Full task lifecycle workspace ───────────────────────────────── */
 function TaskWorkspace({ session, onGoPost, onOpenChat = () => {} }: { session: Session; onGoPost: () => void; onOpenChat?: (taskId: string) => void }) {
-  type OwnedTask = { id: string; title: string; status: "draft" | "open" | "assigned" | "in_progress" | "completed" | "cancelled" | "disputed"; moderation_state: string; assigned_to: string | null; created_at: string };
-  type AppliedTask = { id: string; status: string; task: { id: string; title: string; status: "open" | "assigned" | "in_progress" | "completed" | "cancelled" | "disputed"; assigned_to: string | null; location_label: string } | null };
-  const [tab, setTab] = useState<"posted" | "applied">("posted"); const [posted, setPosted] = useState<OwnedTask[]>([]); const [applied, setApplied] = useState<AppliedTask[]>([]); const [notice, setNotice] = useState(""); const [loading, setLoading] = useState(true);
-  const load = async () => { setLoading(true); const [own, mine] = await Promise.all([supabase.from("tasks").select("id,title,status,moderation_state,assigned_to,created_at").eq("posted_by", session.user.id).order("created_at", { ascending: false }), supabase.from("applications").select("id,status,task:tasks(id,title,status,assigned_to,location_label)").eq("applicant_id", session.user.id).order("created_at", { ascending: false })]); setPosted((own.data || []) as OwnedTask[]); setApplied((mine.data || []) as unknown as AppliedTask[]); setLoading(false); };
+  // ── Types ──────────────────────────────────────────────────────────
+  type FullTask = {
+    id: string; title: string;
+    status: "draft" | "open" | "assigned" | "in_progress" | "pending_client_review" | "completed" | "cancelled" | "disputed";
+    moderation_state: string; assigned_to: string | null; posted_by: string;
+    created_at: string; deadline_at: string | null; completed_at: string | null;
+    commission_amount: number | null; currency: string;
+    payment_type: string; payment_status: string;
+    category_id: string | null;
+  };
+  type AcceptedApplication = {
+    id: string; status: string; created_at: string;
+    task: FullTask | null;
+  };
+  type Deliverable = { id: string; task_id: string; storage_path: string; file_name: string; mime_type: string; signedUrl?: string };
+
+  // ── State ──────────────────────────────────────────────────────────
+  const [tab, setTab] = useState<"posted" | "applied">("posted");
+  const [posted, setPosted] = useState<FullTask[]>([]);
+  const [applied, setApplied] = useState<AcceptedApplication[]>([]);
+  const [deliverablesByTask, setDeliverablesByTask] = useState<Record<string, Deliverable[]>>({});
+  const [notice, setNotice] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [cameraTask, setCameraTask] = useState<string | null>(null);
+  const [uploadingTask, setUploadingTask] = useState<string | null>(null);
+  const [confirmingTask, setConfirmingTask] = useState<string | null>(null);
+  const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const [reviewedIds, setReviewedIds] = useState<string[]>([]);
+  const [tfDeltas, setTfDeltas] = useState<Record<string, number>>({});
+
+  // ── Load ───────────────────────────────────────────────────────────
+  const load = async () => {
+    setLoading(true);
+    const [own, mine, reviewRows] = await Promise.all([
+      supabase.from("tasks").select("id,title,status,moderation_state,assigned_to,posted_by,created_at,deadline_at,completed_at,commission_amount,currency,payment_type,payment_status,category_id").eq("posted_by", session.user.id).order("created_at", { ascending: false }),
+      supabase.from("applications").select("id,status,created_at,task:tasks(id,title,status,moderation_state,assigned_to,posted_by,created_at,deadline_at,completed_at,commission_amount,currency,payment_type,payment_status,category_id)").eq("applicant_id", session.user.id).order("created_at", { ascending: false }),
+      supabase.from("reviews").select("task_id").eq("reviewer_id", session.user.id),
+    ]);
+    const ownedTasks = (own.data || []) as FullTask[];
+    const appliedList = (mine.data || []) as unknown as AcceptedApplication[];
+    setPosted(ownedTasks);
+    setApplied(appliedList);
+    setReviewedIds((reviewRows.data || []).map((r) => r.task_id));
+
+    // Load deliverables for all active tasks
+    const activeTaskIds = [
+      ...ownedTasks.filter((t) => ["assigned","in_progress","pending_client_review","completed"].includes(t.status)).map((t) => t.id),
+      ...appliedList.filter((a) => a.task && ["assigned","in_progress","pending_client_review","completed"].includes(a.task.status)).map((a) => a.task!.id),
+    ];
+    if (activeTaskIds.length) {
+      const { data: delivs } = await supabase.from("task_deliverables").select("id,task_id,storage_path,file_name,mime_type").in("task_id", activeTaskIds).order("created_at", { ascending: false });
+      const byTask: Record<string, Deliverable[]> = {};
+      await Promise.all((delivs || []).map(async (d) => {
+        const { data: signed } = await supabase.storage.from("task-deliverables").createSignedUrl(d.storage_path, 3600);
+        (byTask[d.task_id] ||= []).push({ ...d, signedUrl: signed?.signedUrl });
+      }));
+      setDeliverablesByTask(byTask);
+    }
+    setLoading(false);
+  };
   useEffect(() => { void load(); }, [session.user.id]);
-  const progress = async (taskId: string, status: "in_progress" | "completed") => { const note = status === "completed" ? window.prompt("Add a completion note for the other member (optional):") || null : "Work started"; const { error } = await supabase.rpc("update_task_progress", { target_task_id: taskId, next_status: status, progress_note: note }); setNotice(error ? error.message : status === "completed" ? "Task marked complete. Both members can now leave a rating." : "Task is now in progress."); if (!error) void load(); };
-  const taskState = (task: OwnedTask) => task.moderation_state === "pending_review" ? "Awaiting moderator review" : task.moderation_state === "rejected" ? "Rejected - revise the task details" : task.status === "open" ? "Published - accepting applications" : task.status === "assigned" ? "Provider accepted - ready to begin" : task.status === "in_progress" ? "Work in progress" : task.status === "completed" ? "Completed - leave a rating" : task.status.replace("_", " ");
-  return <div className="fresh-tasks view">
-    <section className="panel task-workspace-head"><div><span className="eyebrow">Your task workspace</span><h2>Manage every task from one place.</h2><p>Keep your posted requests, applications, progress, and completion record separate and clear.</p></div><button className="btn primary" onClick={onGoPost}>+ Post a task</button></section>
-    <nav className="staff-tabs task-tabs"><button className={tab === "posted" ? "active" : ""} onClick={() => setTab("posted")}>My posted tasks <span>{posted.length}</span></button><button className={tab === "applied" ? "active" : ""} onClick={() => setTab("applied")}>My applications <span>{applied.length}</span></button></nav>
-    {notice && <p className="staff-notice">{notice}</p>}
-    {loading ? <section className="panel feed-message">Loading your task workspace...</section> : tab === "posted" ? <section className="task-work-list">{posted.length ? posted.map((task) => <article className="panel staff-case task-work-card" key={task.id}><div className="task-work-card-main"><strong>{task.title}</strong><span>{taskState(task)}</span><small>Posted {new Date(task.created_at).toLocaleDateString()}</small></div><div className="staff-actions task-work-actions">{task.assigned_to && <button className="btn" onClick={() => onOpenChat(task.id)}>Message provider</button>}{task.status === "assigned" && <button className="btn primary" onClick={() => void progress(task.id, "in_progress")}>Start progress</button>}{task.status === "in_progress" && <button className="btn primary" onClick={() => void progress(task.id, "completed")}>Mark complete</button>}<span className="role-chip">{task.status.replace("_", " ")}</span></div></article>) : <div className="fresh-empty-view"><div className="empty-icon">□</div><h2>No posted tasks yet</h2><p>Post a clear request to begin receiving applications.</p><button className="btn primary" onClick={onGoPost}>Post your first task</button></div>}</section> : <section className="task-work-list">{applied.length ? applied.map((application) => { const task = application.task; const accepted = application.status === "accepted" && task?.assigned_to === session.user.id; return <article className="panel staff-case task-work-card" key={application.id}><div className="task-work-card-main"><strong>{task?.title || "Task unavailable"}</strong><span>{accepted ? `Accepted · ${task?.status === "assigned" ? "Ready to start" : task?.status === "in_progress" ? "Work in progress" : task?.status}` : `Application ${application.status}`}</span><small>{task?.location_label || "Task details unavailable"}</small></div><div className="staff-actions task-work-actions">{accepted && task && <button className="btn" onClick={() => onOpenChat(task.id)}>Message task poster</button>}{accepted && task?.status === "assigned" && <button className="btn primary" onClick={() => void progress(task.id, "in_progress")}>Start task</button>}{accepted && task?.status === "in_progress" && <button className="btn primary" onClick={() => void progress(task.id, "completed")}>Submit completion</button>}<span className="role-chip">{application.status}</span></div></article>; }) : <div className="fresh-empty-view"><div className="empty-icon">□</div><h2>No applications yet</h2><p>Browse approved tasks and apply where your skills fit.</p></div>}</section>}
-  </div>;
-  return <div className="fresh-tasks view"><section className="panel task-workspace-head"><div><span className="eyebrow">Your task workspace</span><h2>Manage every task from one place.</h2><p>Keep your posted requests, applications, progress, and completion record separate and clear.</p></div><button className="btn primary" onClick={onGoPost}>+ Post a task</button></section><nav className="staff-tabs task-tabs"><button className={tab === "posted" ? "active" : ""} onClick={() => setTab("posted")}>My posted tasks <span>{posted.length}</span></button><button className={tab === "applied" ? "active" : ""} onClick={() => setTab("applied")}>My applications <span>{applied.length}</span></button></nav>{notice && <p className="staff-notice">{notice}</p>}{loading ? <section className="panel feed-message">Loading your task workspace...</section> : tab === "posted" ? <section className="task-work-list">{posted.length ? posted.map((task) => <article className="panel staff-case" key={task.id}><div><strong>{task.title}</strong><span>{taskState(task)}</span><small>Posted {new Date(task.created_at).toLocaleDateString()}</small></div><div className="staff-actions">{task.status === "assigned" && <button className="btn primary" onClick={() => void progress(task.id, "in_progress")}>Start progress</button>}{task.status === "in_progress" && <button className="btn primary" onClick={() => void progress(task.id, "completed")}>Mark complete</button>}<span className="role-chip">{task.status.replace("_", " ")}</span></div></article>) : <div className="fresh-empty-view"><div className="empty-icon">□</div><h2>No posted tasks yet</h2><p>Post a clear request to begin receiving applications.</p><button className="btn primary" onClick={onGoPost}>Post your first task</button></div>}</section> : <section className="task-work-list">{applied.length ? applied.map((application) => { const task = application.task; const accepted = application.status === "accepted" && task?.assigned_to === session.user.id; return <article className="panel staff-case" key={application.id}><div><strong>{task?.title || "Task unavailable"}</strong><span>{accepted ? `Accepted · ${task?.status === "assigned" ? "Ready to start" : task?.status === "in_progress" ? "Work in progress" : task?.status}` : `Application ${application.status}`}</span><small>{task?.location_label || "Task details unavailable"}</small></div><div className="staff-actions">{accepted && task?.status === "assigned" && <button className="btn primary" onClick={() => void progress(task.id, "in_progress")}>Start task</button>}{accepted && task?.status === "in_progress" && <button className="btn primary" onClick={() => void progress(task.id, "completed")}>Submit completion</button>}<span className="role-chip">{application.status}</span></div></article>; }) : <div className="fresh-empty-view"><div className="empty-icon">□</div><h2>No applications yet</h2><p>Browse approved tasks and apply where your skills fit.</p></div>}</section>}</div>;
+
+  // ── Helpers ────────────────────────────────────────────────────────
+  const tlStages = (task: FullTask): TLStage[] => {
+    const s = task.status;
+    const isDone = (stages: string[]) => stages.includes(s);
+    return [
+      { label: "Open",       date: fmtDate(task.created_at), done: isDone(["assigned","in_progress","pending_client_review","completed"]), current: s === "open" || s === "draft" },
+      { label: "Ongoing",    date: undefined,                 done: isDone(["pending_client_review","completed"]),                         current: s === "assigned" || s === "in_progress" },
+      { label: "Review",     date: undefined,                 done: isDone(["completed"]),                                                current: s === "pending_client_review" },
+      { label: "Completed",  date: fmtDate(task.completed_at), done: s === "completed",                                                  current: false },
+    ];
+  };
+
+  const badgeClass = (status: string) => ({
+    open: "open", draft: "open", assigned: "assigned", in_progress: "in-progress",
+    pending_client_review: "pending-review", completed: "completed", disputed: "disputed", cancelled: "disputed",
+  })[status] || "open";
+
+  const badgeLabel = (status: string) => ({
+    open: "Open", draft: "Draft", assigned: "Ongoing", in_progress: "Ongoing",
+    pending_client_review: "Pending Review", completed: "Completed", disputed: "Disputed", cancelled: "Cancelled",
+  })[status] || status;
+
+  const fmtReward = (task: FullTask) => task.commission_amount ? `₱ ${Number(task.commission_amount).toLocaleString()}` : "Service swap";
+
+  // ── Actions ────────────────────────────────────────────────────────
+  const startProgress = async (taskId: string) => {
+    const { error } = await supabase.rpc("update_task_progress", { target_task_id: taskId, next_status: "in_progress", progress_note: "Work started" });
+    setNotice(error ? error.message : "Task is now in progress. Do great work!");
+    if (!error) void load();
+  };
+
+  const handleCameraCapture = async (taskId: string, file: File) => {
+    setUploadingTask(taskId);
+    const path = `${session.user.id}/${taskId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const upload = await supabase.storage.from("task-deliverables").upload(path, file, { contentType: file.type, upsert: false });
+    if (upload.error) { setNotice(upload.error.message); setUploadingTask(null); return; }
+    const { error: dbErr } = await supabase.from("task_deliverables").insert({ task_id: taskId, submitted_by: session.user.id, storage_path: path, file_name: file.name, mime_type: file.type, caption: "Camera proof of completion" });
+    if (dbErr) { setNotice(dbErr.message); setUploadingTask(null); return; }
+    // Now call the RPC to move to pending_client_review
+    const { error: rpcErr } = await supabase.rpc("applicant_mark_done", { target_task_id: taskId });
+    setUploadingTask(null);
+    if (rpcErr) { setNotice(`Photo uploaded but status update failed: ${rpcErr.message}`); } else { setNotice("Proof submitted! Waiting for the client to confirm."); }
+    void load();
+  };
+
+  const confirmCompletion = async (taskId: string) => {
+    setConfirmingTask(taskId);
+    const { error } = await supabase.rpc("client_confirm_completion", { target_task_id: taskId });
+    setConfirmingTask(null);
+    if (error) { setNotice(error.message); } else { setNotice("Job confirmed! Payment released and task completed."); }
+    void load();
+  };
+
+  const submitReview = async (task: FullTask, isClient: boolean) => {
+    const rating = ratings[task.id] || 0;
+    if (!rating) { setNotice("Choose a star rating first."); return; }
+    const revieweeId = isClient ? task.assigned_to : task.posted_by;
+    if (!revieweeId) { setNotice("Cannot find the other participant."); return; }
+    const { error } = await supabase.from("reviews").insert({ task_id: task.id, reviewer_id: session.user.id, reviewee_id: revieweeId, rating, comment: comments[task.id]?.trim() || null });
+    if (error) { setNotice(error.message); return; }
+    const delta = [0, -2, -1, 0, 1, 2][rating] || 0;
+    setTfDeltas((prev) => ({ ...prev, [task.id]: delta }));
+    setNotice("Review submitted. Thank you!");
+    void load();
+  };
+
+  // ── Render helpers ─────────────────────────────────────────────────
+  const ClientTaskCard = ({ task }: { task: FullTask }) => {
+    const deliverables = deliverablesByTask[task.id] || [];
+    const isCompleted = task.status === "completed";
+    const isPendingReview = task.status === "pending_client_review";
+    const isOngoing = task.status === "assigned" || task.status === "in_progress";
+    const notReviewed = isCompleted && !reviewedIds.includes(task.id);
+    const tfDelta = tfDeltas[task.id];
+    return (
+      <article className="task-lifecycle-card">
+        <div className="tlc-header">
+          <div className="tlc-header-left">
+            <div className="tlc-title">{task.title}</div>
+            <div className="tlc-meta">
+              <span className="tlc-reward">{fmtReward(task)}</span>
+              <span>·</span>
+              <span>{task.payment_type === "gcash" ? "GCash" : "Cash meetup"}</span>
+              {task.deadline_at && <><span>·</span><span>Due {fmtDate(task.deadline_at)}</span></>}
+            </div>
+          </div>
+          <span className={`tlc-status-badge ${badgeClass(task.status)}`}>{badgeLabel(task.status)}</span>
+        </div>
+        <div className="tlc-body">
+          <TaskTimeline stages={tlStages(task)} />
+
+          {/* Ongoing: chat link */}
+          {isOngoing && task.assigned_to && (
+            <div className="tlc-actions">
+              <button type="button" className="tlc-chat-link" onClick={() => onOpenChat(task.id)}>
+                <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                Message provider
+              </button>
+              <span style={{fontSize:12,color:"#7a8daa"}}>Waiting for the provider to submit proof of completion.</span>
+            </div>
+          )}
+
+          {/* Pending client review: show proof + confirm button */}
+          {isPendingReview && (
+            <div className="tlc-proof-section">
+              <div className="tlc-proof-label">Proof of completion</div>
+              {deliverables.length ? (
+                <div className="tlc-proof-grid">
+                  {deliverables.slice(0, 4).map((d) => (
+                    <div className="tlc-proof-thumb" key={d.id}>
+                      {d.mime_type.startsWith("image/") && d.signedUrl ? <img src={d.signedUrl} alt="Proof" /> : <span style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",color:"#7a8daa",fontSize:11}}>FILE</span>}
+                    </div>
+                  ))}
+                </div>
+              ) : <div className="tlc-proof-empty"><span>📷</span><span>The provider marked this as done but no proof photo was linked yet.</span></div>}
+              <div className="tlc-actions">
+                <button type="button" className="tlc-chat-link" onClick={() => onOpenChat(task.id)}>
+                  <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                  Message provider
+                </button>
+                <button type="button" className="tlc-confirm-btn" disabled={confirmingTask === task.id} onClick={() => void confirmCompletion(task.id)}>
+                  {confirmingTask === task.id ? "Confirming…" : "✓ Confirm Job Done"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Completed: payment receipt */}
+          {isCompleted && (
+            <PaymentReceiptCard task={{ ...task, title: task.title }} />
+          )}
+
+          {/* Completed: leave a review */}
+          {notReviewed && (
+            <div className="tlc-review-zone">
+              <h4>Rate your provider</h4>
+              <div className="review-stars-row">
+                {[1,2,3,4,5].map((star) => (
+                  <button type="button" key={star} className={(ratings[task.id] || 0) >= star ? "selected" : ""} onClick={() => setRatings((p) => ({ ...p, [task.id]: star }))} aria-label={`${star} star`}>★</button>
+                ))}
+              </div>
+              <textarea value={comments[task.id] || ""} maxLength={1500} onChange={(e) => setComments((p) => ({ ...p, [task.id]: e.target.value }))} placeholder="Optional written review that will be visible on the provider's profile." />
+              <button type="button" className="btn primary" onClick={() => void submitReview(task, true)}>Submit review</button>
+              {tfDelta !== undefined && (
+                <div className={`tf-delta-toast ${tfDelta < 0 ? "negative" : ""}`}>
+                  {tfDelta >= 0 ? `+${tfDelta}` : tfDelta} Trust Factor {tfDelta >= 0 ? "earned by provider" : "deducted from provider"}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </article>
+    );
+  };
+
+  const ApplicantTaskCard = ({ application }: { application: AcceptedApplication }) => {
+    const task = application.task;
+    if (!task) return (
+      <article className="task-lifecycle-card">
+        <div className="tlc-header"><div className="tlc-title" style={{color:"#7a8daa"}}>Task unavailable</div></div>
+      </article>
+    );
+    const isAccepted = application.status === "accepted" && task.assigned_to === session.user.id;
+    const deliverables = deliverablesByTask[task.id] || [];
+    const isCompleted = task.status === "completed";
+    const isPendingReview = task.status === "pending_client_review";
+    const isInProgress = task.status === "in_progress";
+    const isAssigned = task.status === "assigned";
+    const notReviewed = isCompleted && !reviewedIds.includes(task.id);
+    const tfDelta = tfDeltas[task.id];
+    return (
+      <article className="task-lifecycle-card">
+        <div className="tlc-header">
+          <div className="tlc-header-left">
+            <div className="tlc-title">{task.title}</div>
+            <div className="tlc-meta">
+              <span className="tlc-reward">{fmtReward(task)}</span>
+              <span>·</span>
+              <span>{task.payment_type === "gcash" ? "GCash" : "Cash meetup"}</span>
+              {task.deadline_at && <><span>·</span><span>Due {fmtDate(task.deadline_at)}</span></>}
+            </div>
+          </div>
+          {isAccepted ? (
+            <span className={`tlc-status-badge ${badgeClass(task.status)}`}>{badgeLabel(task.status)}</span>
+          ) : (
+            <span className={`tlc-status-badge ${application.status === "pending" ? "assigned" : "open"}`}>{application.status}</span>
+          )}
+        </div>
+        <div className="tlc-body">
+          {isAccepted && <TaskTimeline stages={tlStages(task)} />}
+
+          {/* Ready to start */}
+          {isAccepted && isAssigned && (
+            <div className="tlc-actions">
+              <button type="button" className="btn primary" onClick={() => void startProgress(task.id)}>Start task</button>
+              <button type="button" className="tlc-chat-link" onClick={() => onOpenChat(task.id)}>
+                <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                Message client
+              </button>
+            </div>
+          )}
+
+          {/* In progress: camera button to mark done */}
+          {isAccepted && isInProgress && (
+            <div className="tlc-proof-section">
+              <div className="tlc-proof-label">Submit proof of completion</div>
+              {deliverables.length > 0 && (
+                <div className="tlc-proof-grid">
+                  {deliverables.slice(0, 4).map((d) => (
+                    <div className="tlc-proof-thumb" key={d.id}>
+                      {d.mime_type.startsWith("image/") && d.signedUrl ? <img src={d.signedUrl} alt="Proof" /> : <span style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",color:"#7a8daa",fontSize:11}}>FILE</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="tlc-actions">
+                <button type="button" className="tlc-camera-btn" disabled={uploadingTask === task.id} onClick={() => setCameraTask(task.id)}>
+                  <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+                  {uploadingTask === task.id ? "Uploading proof…" : deliverables.length ? "Add another photo" : "Take proof photo"}
+                </button>
+                {deliverables.length > 0 && (
+                  <button type="button" className="tlc-confirm-btn" disabled={uploadingTask === task.id} onClick={() => {
+                    void supabase.rpc("applicant_mark_done", { target_task_id: task.id }).then(({ error }) => {
+                      if (error) setNotice(error.message); else { setNotice("Marked as done! Waiting for client confirmation."); void load(); }
+                    });
+                  }}>
+                    ✓ Mark as Done
+                  </button>
+                )}
+                <button type="button" className="tlc-chat-link" onClick={() => onOpenChat(task.id)}>
+                  <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                  Message client
+                </button>
+              </div>
+              <p style={{fontSize:11,color:"#7a8daa",margin:"4px 0 0"}}>📷 Real-time camera only — gallery uploads are not accepted as proof.</p>
+            </div>
+          )}
+
+          {/* Pending client review: waiting state */}
+          {isAccepted && isPendingReview && (
+            <div className="tlc-waiting">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+              <div>
+                <strong style={{display:"block",marginBottom:3}}>Waiting for client confirmation</strong>
+                Your proof was submitted. The client will review it and confirm the job is done before payment is released.
+              </div>
+            </div>
+          )}
+
+          {/* Completed: show payment card */}
+          {isAccepted && isCompleted && (
+            <PaymentReceiptCard task={{ ...task, title: task.title }} />
+          )}
+
+          {/* Completed: leave a review */}
+          {isAccepted && notReviewed && (
+            <div className="tlc-review-zone">
+              <h4>Rate your client</h4>
+              <div className="review-stars-row">
+                {[1,2,3,4,5].map((star) => (
+                  <button type="button" key={star} className={(ratings[task.id] || 0) >= star ? "selected" : ""} onClick={() => setRatings((p) => ({ ...p, [task.id]: star }))} aria-label={`${star} star`}>★</button>
+                ))}
+              </div>
+              <textarea value={comments[task.id] || ""} maxLength={1500} onChange={(e) => setComments((p) => ({ ...p, [task.id]: e.target.value }))} placeholder="Optional written feedback visible on the client's profile." />
+              <button type="button" className="btn primary" onClick={() => void submitReview(task, false)}>Submit review</button>
+              {tfDelta !== undefined && (
+                <div className={`tf-delta-toast ${tfDelta < 0 ? "negative" : ""}`}>
+                  {tfDelta >= 0 ? `+${tfDelta}` : tfDelta} Trust Factor {tfDelta >= 0 ? "earned by client" : "deducted from client"}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Not accepted yet */}
+          {!isAccepted && (
+            <p style={{fontSize:12,color:"#7a8daa",margin:0}}>Application status: <strong style={{color:"#12255c"}}>{application.status}</strong></p>
+          )}
+        </div>
+      </article>
+    );
+  };
+
+  // ── Camera modal ───────────────────────────────────────────────────
+  const cameraModal = cameraTask ? (
+    <CameraCapture
+      onCapture={(file) => { void handleCameraCapture(cameraTask, file); setCameraTask(null); }}
+      onClose={() => setCameraTask(null)}
+    />
+  ) : null;
+
+  // ── Main render ────────────────────────────────────────────────────
+  return (
+    <div className="fresh-tasks view">
+      <section className="panel task-workspace-head">
+        <div>
+          <span className="eyebrow">Your quest log</span>
+          <h2>Manage every task from one place.</h2>
+          <p>Track posted tasks, accepted applications, proof of completion, and payment — all in one timeline.</p>
+        </div>
+        <button className="btn primary" onClick={onGoPost}>+ Post a task</button>
+      </section>
+
+      <nav className="staff-tabs task-tabs">
+        <button className={tab === "posted" ? "active" : ""} onClick={() => setTab("posted")}>Posted by me <span>{posted.length}</span></button>
+        <button className={tab === "applied" ? "active" : ""} onClick={() => setTab("applied")}>My applications <span>{applied.length}</span></button>
+      </nav>
+
+      {notice && <p className="staff-notice">{notice}</p>}
+
+      {loading ? (
+        <section className="panel feed-message">Loading your quest log...</section>
+      ) : tab === "posted" ? (
+        <section className="task-work-list">
+          {posted.filter((t) => t.status !== "draft").length ? (
+            posted.filter((t) => t.status !== "draft").map((task) => <ClientTaskCard key={task.id} task={task} />)
+          ) : (
+            <div className="task-empty-state">
+              <div className="task-empty-icon">📋</div>
+              <h3>No active tasks yet</h3>
+              <p>Post a clear request to start receiving applications from verified members.</p>
+              <button className="btn primary" onClick={onGoPost}>Post your first task</button>
+            </div>
+          )}
+        </section>
+      ) : (
+        <section className="task-work-list">
+          {applied.length ? (
+            applied.map((app) => <ApplicantTaskCard key={app.id} application={app} />)
+          ) : (
+            <div className="task-empty-state">
+              <div className="task-empty-icon">🔍</div>
+              <h3>No applications yet</h3>
+              <p>Browse the marketplace and apply to tasks where your skills are a good fit.</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {cameraModal}
+    </div>
+  );
 }
 
 function NotificationBell({ userId }: { userId: string }) {
@@ -1019,43 +1465,15 @@ function TaskApplicationInboxV2({ session }: { session: Session }) {
   return <><section className="panel application-inbox"><div className="section-head"><div><span className="eyebrow">Application inbox</span><h2>Review applicants for your posted task</h2><p>You are the task poster. Choose an applicant when you are ready; the selected applicant becomes the service provider and all other pending applications close automatically.</p></div></div>{notice && <p className="staff-notice">{notice}</p>}<div className="task-work-list">{applications.map((application) => { const member = members[application.applicant_id]; const name = member?.full_name || "QuestKarte member"; return <article className="staff-case" key={application.id}><button type="button" className="qc-poster qc-poster-button" onClick={() => setProfilePreviewId(application.applicant_id)} aria-label={`View ${name}'s profile`}><span className="avatar">{member?.avatar_url ? <img src={member.avatar_url} alt="" /> : name.slice(0, 2).toUpperCase()}</span><span><strong>{name}</strong><small>Trust Factor {member?.trust_factor || 0} · applied for {tasks[application.task_id] || "your task"}</small></span></button><div className="application-note"><strong>Application note</strong><p>{application.cover_note || "No message was added."}</p></div><div className="application-card-actions"><button type="button" className="btn" onClick={() => setSelectedApplication(application)}>View details</button><button type="button" className="btn application-decline" onClick={() => void decline(application)}>Decline</button><button type="button" className="btn primary" onClick={() => void accept(application)}>Accept applicant</button><span className="role-chip">{application.status}</span></div></article>; })}</div></section>{selectedApplication && <ApplicationDetailModal application={selectedApplication} member={members[selectedApplication.applicant_id]} attachments={attachments[selectedApplication.id] || []} onClose={() => setSelectedApplication(null)} onProfile={() => { setProfilePreviewId(selectedApplication.applicant_id); setSelectedApplication(null); }} />}{profilePreviewId && <MemberProfileModal memberId={profilePreviewId} onClose={() => setProfilePreviewId(null)} />}</>;
 }
 
-function CompletedTaskReviews({ session }: { session: Session }) {
-  type CompletedTask = { id: string; title: string; posted_by: string; assigned_to: string | null };
-  const [tasks, setTasks] = useState<CompletedTask[]>([]);
-  const [reviewedIds, setReviewedIds] = useState<string[]>([]);
-  const [ratings, setRatings] = useState<Record<string, number>>({});
-  const [comments, setComments] = useState<Record<string, string>>({});
-  const [notice, setNotice] = useState("");
-  const load = async () => {
-    const { data: taskRows } = await supabase.from("tasks").select("id,title,posted_by,assigned_to").eq("status", "completed").or(`posted_by.eq.${session.user.id},assigned_to.eq.${session.user.id}`);
-    const rows = (taskRows || []) as CompletedTask[];
-    const { data: reviewRows } = await supabase.from("reviews").select("task_id").eq("reviewer_id", session.user.id);
-    setTasks(rows); setReviewedIds((reviewRows || []).map((review) => review.task_id));
-  };
-  useEffect(() => { void load(); }, [session.user.id]);
-  const submit = async (task: CompletedTask) => {
-    const rating = ratings[task.id] || 0;
-    if (!rating) { setNotice("Choose a star rating first."); return; }
-    const revieweeId = task.posted_by === session.user.id ? task.assigned_to : task.posted_by;
-    if (!revieweeId) { setNotice("This completed task has no assigned provider."); return; }
-    const { error } = await supabase.from("reviews").insert({ task_id: task.id, reviewer_id: session.user.id, reviewee_id: revieweeId, rating, comment: comments[task.id]?.trim() || null });
-    setNotice(error ? error.message : "Review submitted. The member's rating and Trust Factor have been updated.");
-    if (!error) void load();
-  };
-  const pending = tasks.filter((task) => !reviewedIds.includes(task.id));
-  if (!pending.length) return null;
-  return <section className="panel application-inbox"><div className="section-head"><div><span className="eyebrow">Completed work</span><h2>Leave a fair review</h2><p>Both task posters and providers can rate one another after a task is completed.</p></div></div>{notice && <p className="staff-notice">{notice}</p>}<div className="task-work-list">{pending.map((task) => <article className="staff-case review-case" key={task.id}><div><strong>{task.title}</strong><span>Rate the other task participant</span></div><div className="review-stars" aria-label="Choose a rating">{[1, 2, 3, 4, 5].map((star) => <button type="button" key={star} className={(ratings[task.id] || 0) >= star ? "selected" : ""} onClick={() => setRatings({ ...ratings, [task.id]: star })} aria-label={`${star} star${star === 1 ? "" : "s"}`}>★</button>)}</div><textarea value={comments[task.id] || ""} maxLength={1500} onChange={(event) => setComments({ ...comments, [task.id]: event.target.value })} placeholder="Optional feedback that will help other members." /><button type="button" className="btn primary" onClick={() => void submit(task)}>Submit review</button></article>)}</div></section>;
-}
+// CompletedTaskReviews is now merged into TaskWorkspace's ClientTaskCard and ApplicantTaskCard.
+// Stub retained for the AppShell call site.
+function CompletedTaskReviews({ session: _s }: { session: Session }) { void _s; return null; }
 
-function TaskDeliveryAndSafety({ session }: { session: Session }) {
-  type ActiveTask = { id: string; title: string; status: string; posted_by: string; assigned_to: string | null };
-  const [tasks, setTasks] = useState<ActiveTask[]>([]); const [selectedFile, setSelectedFile] = useState<Record<string, File | null>>({}); const [notice, setNotice] = useState("");
-  const load = async () => { const { data } = await supabase.from("tasks").select("id,title,status,posted_by,assigned_to").in("status", ["assigned", "in_progress"]).or(`posted_by.eq.${session.user.id},assigned_to.eq.${session.user.id}`); setTasks((data || []) as ActiveTask[]); };
-  useEffect(() => { void load(); }, [session.user.id]);
-  const upload = async (task: ActiveTask) => { const file = selectedFile[task.id]; if (!file) { setNotice("Choose a JPG, PNG, WEBP, or PDF deliverable first."); return; } if (task.assigned_to !== session.user.id) { setNotice("Only the assigned provider can submit a deliverable."); return; } const path = `${session.user.id}/${task.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`; const result = await supabase.storage.from("task-deliverables").upload(path, file, { contentType: file.type, upsert: false }); if (result.error) { setNotice(result.error.message); return; } const { error } = await supabase.from("task_deliverables").insert({ task_id: task.id, submitted_by: session.user.id, storage_path: path, file_name: file.name, mime_type: file.type, caption: "Submitted from task workspace" }); setNotice(error ? error.message : "Deliverable uploaded. The task poster can now review it in this protected workspace."); };
-  const dispute = async (task: ActiveTask) => { const reason = window.prompt("Describe the issue clearly for QuestKarte staff:"); if (!reason?.trim()) return; const { error } = await supabase.from("disputes").insert({ task_id: task.id, opened_by: session.user.id, reason: reason.trim(), status: "open" }); if (!error) await supabase.rpc("update_task_progress", { target_task_id: task.id, next_status: "disputed", progress_note: "A participant opened a dispute." }); setNotice(error ? error.message : "Dispute submitted. A moderator will review the case and both members will be notified."); if (!error) void load(); };
-  if (!tasks.length) return null;
-  return <section className="panel application-inbox"><div className="section-head"><div><span className="eyebrow">Protected work area</span><h2>Deliverables and support</h2><p>Submit proof of completed work securely, or open a dispute if the task cannot be resolved directly.</p></div></div>{notice && <p className="staff-notice">{notice}</p>}<div className="task-work-list">{tasks.map((task) => <article className="staff-case" key={task.id}><div><strong>{task.title}</strong><span>{task.status.replace("_", " ")}</span></div><div className="application-note">{task.assigned_to === session.user.id && <label className="photo-add-button">Choose deliverable<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setSelectedFile({ ...selectedFile, [task.id]: event.target.files?.[0] || null })} /></label>}<small>{selectedFile[task.id]?.name || "JPG, PNG, WEBP, or PDF; maximum 10 MB."}</small></div><div className="staff-actions">{task.assigned_to === session.user.id && <button type="button" className="btn primary" onClick={() => void upload(task)}>Submit deliverable</button>}<button type="button" className="btn danger" onClick={() => void dispute(task)}>Open dispute</button></div></article>)}</div></section>;
+// TaskDeliveryAndSafety is now fully merged into TaskWorkspace above.
+// This stub is kept so existing call sites in AppShell compile without error.
+function TaskDeliveryAndSafety({ session: _session }: { session: Session }) {
+  void _session;
+  return null;
 }
 
 function LegacyPostTaskReal({ session, profile, onPosted }: { session: Session | null; profile: MemberProfile | null; onPosted: () => void }) {
@@ -1085,6 +1503,7 @@ function PostTaskReal({ session, profile, onPosted }: { session: Session | null;
   const [customCategory, setCustomCategory] = useState("");
   const [serviceSwap, setServiceSwap] = useState(false);
   const [swapDetails, setSwapDetails] = useState("");
+  const [paymentType, setPaymentType] = useState<"cash" | "gcash">("cash");
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -1119,6 +1538,7 @@ function PostTaskReal({ session, profile, onPosted }: { session: Session | null;
       posted_by: session.user.id, category_id: categoryRow?.id || null, title: title.trim(), description: fullDescription,
       commission_amount: amount, currency: "PHP", is_service_swap: serviceSwap,
       swap_details: serviceSwap ? `Service Swap Offer · PHP ${amount.toLocaleString()} — ${swapText}` : null,
+      payment_type: paymentType, payment_status: "pending",
       location_label: location.trim(), latitude: coords.latitude, longitude: coords.longitude, status: "draft", moderation_state: "pending_review",
     }).select("id").single();
     if (error || !task) { setSaving(false); setNotice(error?.message || "Unable to submit the task."); return; }
@@ -1144,7 +1564,14 @@ function PostTaskReal({ session, profile, onPosted }: { session: Session | null;
     <label className="field-group"><span className="field-label">Description</span><textarea className="field-textarea" minLength={20} maxLength={5000} required value={description} onChange={(event) => setDescription(event.target.value)} /></label>
     <div className="form-two"><label className="field-group"><span className="field-label">Category</span><select className="field-input" value={category} onChange={(event) => setCategory(event.target.value)}>{taskCategories.map((item) => <option key={item}>{item}</option>)}</select></label><label className="field-group"><span className="field-label">Estimated value (PHP)</span><input className="field-input" required value={commission} onChange={(event) => setCommission(event.target.value)} /></label></div>
     {category === "Other" && <label className="field-group"><span className="field-label">What kind of task is this?</span><input className="field-input" required minLength={2} maxLength={60} value={customCategory} onChange={(event) => setCustomCategory(event.target.value)} placeholder="Example: Furniture assembly or language interpretation" /></label>}
-    <label className="service-swap-control"><input type="checkbox" checked={serviceSwap} onChange={(event) => setServiceSwap(event.target.checked)} /><span><strong>Offer a service swap</strong><small>Offer a service instead of cash. Add its estimated PHP value and description.</small></span></label>
+    <div className="field-group">
+      <span className="field-label">Payment method</span>
+      <div className="segmented">
+        <button type="button" className={`seg ${paymentType === "cash" ? "active" : ""}`} onClick={() => setPaymentType("cash")}>Cash (meet up)</button>
+        <button type="button" className={`seg ${paymentType === "gcash" ? "active" : ""}`} onClick={() => setPaymentType("gcash")}>GCash (escrow)</button>
+      </div>
+    </div>
+    <label className="service-swap-control"><input type="checkbox" checked={serviceSwap} onChange={(event) => setServiceSwap(event.target.checked)} /><span><strong>Offer a service swap instead</strong><small>Offer a service instead of cash or GCash. Add its estimated PHP value and description.</small></span></label>
     {serviceSwap && <label className="field-group"><span className="field-label">Service swap offer</span><input className="field-input" minLength={5} maxLength={300} value={swapDetails} onChange={(event) => setSwapDetails(event.target.value)} placeholder="Example: I can provide a two-hour website consultation." /></label>}
     <label className="field-group"><span className="field-label">General area</span><input className="field-input" required value={location} onChange={(event) => setLocation(event.target.value)} placeholder="e.g. Lahug, Cebu City" /></label>
     <label className="upload-box photo-dropzone"><strong>Add reference photos</strong><small>Optional; up to 6 JPG, PNG, or WEBP images. Help applicants understand the work.</small><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => selectFiles(event.target.files)} />{files.length > 0 && <b>{files.length} image{files.length === 1 ? "" : "s"} selected</b>}</label>
