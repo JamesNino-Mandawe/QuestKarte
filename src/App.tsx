@@ -2856,10 +2856,7 @@ function FreshDiscovery({
             </button>
           </div>
           {radiusControl()}
-          <TaskMap position={position} radius={radius} tasks={visibleTasks as unknown as TaskMapPin[]} onApply={(id) => {
-              const fullTask = visibleTasks.find((t: any) => t.id === id);
-              if (fullTask) setApplicationTask(fullTask as any);
-            }} />
+          <TaskMap position={position} radius={radius} tasks={visibleTasks as unknown as TaskMapPin[]} onApply={() => alert('Please sign in or use the main feed to apply for tasks.')} />
         </section>
         <section className="panel fresh-trust">
           <div className="snapshot-heading">
@@ -2949,10 +2946,7 @@ function FreshDiscovery({
                 radius={radius}
                 tasks={visibleTasks as unknown as TaskMapPin[]}
                 full
-                onApply={(id) => {
-                  const fullTask = visibleTasks.find((t: any) => t.id === id);
-                  if (fullTask) setApplicationTask(fullTask as any);
-                }}
+                onApply={() => alert('Please sign in or use the main feed to apply for tasks.')}
               />
             <p className="map-caption">
               Category markers: tutoring 📚 · cleaning 🧹 · delivery 🛵 · design
