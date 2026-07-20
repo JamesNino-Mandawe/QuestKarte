@@ -7419,7 +7419,7 @@ function TaskWorkspace({
     void load();
   };
 
-  const submitReview = async (task: FullTask, isClient: boolean, rating: number, comment: string) => {
+  const submitReview = async (task: FullTask, _isClient: boolean, rating: number, comment: string) => {
     if (!rating) {
       setNotice("Choose a star rating first.");
       return;
