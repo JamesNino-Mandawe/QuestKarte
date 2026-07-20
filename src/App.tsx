@@ -345,7 +345,7 @@ function LegacyAppShell({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search tasks, skills, or locations"
+              placeholder="Search tasks or skills..."
               aria-label="Search tasks"
             />
           </label>
@@ -788,7 +788,7 @@ function AppShell({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search tasks, skills, or locations"
+              placeholder="Search tasks or skills..."
               aria-label="Search tasks"
             />
           </label>
@@ -918,7 +918,7 @@ function AppShell({
         <MemberGuide onNavigate={(destination) => setPage(destination)} />
       )}
       {!staffRole && <CameraInputBridge />}
-        <HelpSafetyWidget />
+        <HelpSafetyWidget isGuest={!session} />
     </div>
   );
 }
@@ -1990,7 +1990,7 @@ function MarketplaceFeedLive({
   const normalizedQuery = query.trim().toLowerCase();
   const visibleTasks = normalizedQuery
     ? tasks.filter((task) =>
-        `${task.title} ${task.description} ${task.categoryName} ${task.location_label} ${task.posterName}`
+        `${task.title} ${task.description} ${task.categoryName} ${task.posterName}`
           .toLowerCase()
           .includes(normalizedQuery),
       )
@@ -2071,14 +2071,10 @@ function MarketplaceFeedLive({
         ) : (
           <div className="panel feed-message">
             <strong>
-              {normalizedQuery
-                ? "No matching tasks found."
-                : "No published tasks yet."}
+              {normalizedQuery ? `Tasks related to "${query}" are not available.` : "No published tasks yet."}
             </strong>
             <span>
-              {normalizedQuery
-                ? "Try a task title, category, skill, or location such as Cleaning, tutoring, or Lahug."
-                : "When any QuestKarte member publishes a task, it will appear here for everyone."}
+              {normalizedQuery ? "Try a different task title, category, or skill." : "When any QuestKarte member publishes a task, it will appear here for everyone."}
             </span>
             {!normalizedQuery && (
               <button type="button" className="btn primary" onClick={onPost}>
@@ -3589,7 +3585,8 @@ function FreshTasks({
   session: Session;
   onGoPost: () => void;
 }) {
-  const [tab, setTab] = useState<"posted" | "applied">("posted");
+  const [tab, setTab] = useState<"posted" | "applied">(() => (localStorage.getItem('questkarte-tasks-tab') as any) || "posted");
+    useEffect(() => { localStorage.setItem('questkarte-tasks-tab', tab); }, [tab]);
   const [posted, setPosted] = useState<LifecycleTask[]>([]);
   const [applied, setApplied] = useState<{ id: string; status: string; created_at: string; task: LifecycleTask | null }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -6972,7 +6969,8 @@ function TaskWorkspace({
   };
 
   // ── State ──────────────────────────────────────────────────────────
-  const [tab, setTab] = useState<"posted" | "applied">("posted");
+  const [tab, setTab] = useState<"posted" | "applied">(() => (localStorage.getItem('questkarte-tasks-tab') as any) || "posted");
+    useEffect(() => { localStorage.setItem('questkarte-tasks-tab', tab); }, [tab]);
   const [posted, setPosted] = useState<FullTask[]>([]);
   const [applied, setApplied] = useState<AcceptedApplication[]>([]);
   const [deliverablesByTask, setDeliverablesByTask] = useState<
@@ -9499,7 +9497,7 @@ void FreshChat;
 void FreshTasks;
 
 
-function HelpSafetyWidget() {
+function HelpSafetyWidget({ isGuest }: { isGuest?: boolean }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"guidelines"|"report">("guidelines");
   const [reportReason, setReportReason] = useState("");
@@ -9532,7 +9530,7 @@ function HelpSafetyWidget() {
             </div>
             <div style={{ display: 'flex', borderBottom: '1px solid #e1e6f0' }}>
               <button onClick={() => setTab("guidelines")} style={{ flex: 1, padding: 15, background: tab === "guidelines" ? '#fff' : '#f7f9fe', border: 'none', borderBottom: tab === "guidelines" ? '2px solid #159b78' : '2px solid transparent', fontWeight: 'bold', color: tab === "guidelines" ? '#101d57' : '#74819c', cursor: 'pointer' }}>Guidelines</button>
-              <button onClick={() => setTab("report")} style={{ flex: 1, padding: 15, background: tab === "report" ? '#fff' : '#f7f9fe', border: 'none', borderBottom: tab === "report" ? '2px solid #a43f3f' : '2px solid transparent', fontWeight: 'bold', color: tab === "report" ? '#101d57' : '#74819c', cursor: 'pointer' }}>File a Report</button>
+              {!isGuest && <button onClick={() => setTab("report")} style={{ flex: 1, padding: 15, background: tab === "report" ? '#fff' : '#f7f9fe', border: 'none', borderBottom: tab === "report" ? '2px solid #a43f3f' : '2px solid transparent', fontWeight: 'bold', color: tab === "report" ? '#101d57' : '#74819c', cursor: 'pointer' }}>File a Report</button>}
             </div>
             <div style={{ padding: 24, overflowY: 'auto' }}>
               {tab === "guidelines" ? (
@@ -9543,7 +9541,7 @@ function HelpSafetyWidget() {
                   <p style={{ marginBottom: 10 }}><strong>3. Keep it on the platform.</strong> Do not ask for or provide services outside of QuestKarte.</p>
                   <p style={{ marginBottom: 10 }}><strong>4. Be honest.</strong> Misrepresenting your skills or identity may result in a ban.</p>
                   <div style={{ marginTop: 20, padding: 15, background: 'rgba(21,155,120,0.1)', borderRadius: 10, color: '#159b78' }}>
-                    If you encounter behavior that violates these guidelines, please switch to the <strong>File a Report</strong> tab to alert our moderation team.
+                    {isGuest ? "If you encounter behavior that violates these guidelines, please sign in to file a report with our moderation team." : "If you encounter behavior that violates these guidelines, please switch to the <strong>File a Report</strong> tab to alert our moderation team."}
                   </div>
                 </div>
               ) : (
