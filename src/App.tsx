@@ -7424,7 +7424,7 @@ function TaskWorkspace({
       setNotice("Choose a star rating first.");
       return;
     }
-    const revieweeId = isClient ? task.assigned_to : task.posted_by;
+    const revieweeId = task.posted_by === session.user.id ? task.assigned_to : task.posted_by;
     if (!revieweeId) {
       setNotice("Cannot find the other participant.");
       return;
