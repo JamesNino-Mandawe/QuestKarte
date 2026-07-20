@@ -620,40 +620,19 @@ function CameraCapture({
           />
         )}
         <div className="camera-capture-actions">
-          <button type="button" className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn primary"
-            disabled={Boolean(error)}
-            onClick={capture}
-          >
-            Take photo
-          </button>
-        </div>
-              {reportSuccess ? (
-                <div style={{ marginTop: 20, padding: 15, background: "rgba(70,214,163,0.1)", color: "#159b78", borderRadius: 10, fontSize: 13 }}>Report submitted successfully. Our safety team will review it.</div>
-              ) : isReporting ? (
-                <div style={{ marginTop: 20, padding: 15, background: "#f7f9fe", border: "1px solid #dce4f1", borderRadius: 10 }}>
-                  <h3 style={{ fontSize: 13, marginBottom: 8, color: "#a43f3f" }}>Report {name}</h3>
-                  <textarea value={reportReason} onChange={e => setReportReason(e.target.value)} placeholder="Please explain why you are reporting this member..." style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 8, border: "1px solid #cdd8ea", marginBottom: 10, fontSize: 13 }} />
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button className="btn" onClick={() => setIsReporting(false)}>Cancel</button>
-                    <button className="btn primary" style={{ background: "#a43f3f", color: "#fff" }} onClick={submitReport}>Submit Report</button>
-                  </div>
-                </div>
-              ) : (
-                <button className="btn" onClick={() => setIsReporting(true)} style={{ marginTop: 20, color: "#a43f3f", border: "1px solid #e5bbbb", background: "#fff7f7", width: "100%" }}>Report Member</button>
-              )}
-            </>
-          )}
-        </section>
-        {enlargedImage && (
-          <div style={{ position: "fixed", inset: 0, zIndex: 99999, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(5px)" }} onClick={() => setEnlargedImage(null)}>
-            <img src={enlargedImage} alt="Enlarged view" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "12px", boxShadow: "0 20px 40px rgba(0,0,0,0.5)" }} />
+            <button type="button" className="btn" onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              disabled={Boolean(error)}
+              onClick={capture}
+            >
+              Take photo
+            </button>
           </div>
-        )}
+        </section>
       </div>
     );
   }
@@ -2228,15 +2207,34 @@ function MemberProfileModal({
                   member.skills.map((skill) => <span key={skill}>{skill}</span>)
                 ) : (
                   <small>No services listed yet.</small>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          </>
+              {reportSuccess ? (
+                <div style={{ marginTop: 20, padding: 15, background: "rgba(70,214,163,0.1)", color: "#159b78", borderRadius: 10, fontSize: 13 }}>Report submitted successfully. Our safety team will review it.</div>
+              ) : isReporting ? (
+                <div style={{ marginTop: 20, padding: 15, background: "#f7f9fe", border: "1px solid #dce4f1", borderRadius: 10 }}>
+                  <h3 style={{ fontSize: 13, marginBottom: 8, color: "#a43f3f" }}>Report {name}</h3>
+                  <textarea value={reportReason} onChange={e => setReportReason(e.target.value)} placeholder="Please explain why you are reporting this member..." style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 8, border: "1px solid #cdd8ea", marginBottom: 10, fontSize: 13 }} />
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button className="btn" onClick={() => setIsReporting(false)}>Cancel</button>
+                    <button className="btn primary" style={{ background: "#a43f3f", color: "#fff" }} onClick={submitReport}>Submit Report</button>
+                  </div>
+                </div>
+              ) : (
+                <button className="btn" onClick={() => setIsReporting(true)} style={{ marginTop: 20, color: "#a43f3f", border: "1px solid #e5bbbb", background: "#fff7f7", width: "100%" }}>Report Member</button>
+              )}
+            </>
+          )}
+        </section>
+        {enlargedImage && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 99999, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(5px)" }} onClick={() => setEnlargedImage(null)}>
+            <img src={enlargedImage} alt="Enlarged view" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "12px", boxShadow: "0 20px 40px rgba(0,0,0,0.5)" }} />
+          </div>
         )}
-      </section>
-    </div>
-  );
-}
+      </div>
+    );
+  }
 
 function ApplicationWorkspace({
   task,
