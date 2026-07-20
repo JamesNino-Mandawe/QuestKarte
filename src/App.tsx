@@ -2568,7 +2568,8 @@ function FreshDiscovery({
   const [radiusInput, setRadiusInput] = useState("5");
   const [locationQuery, setLocationQuery] = useState("");
   const [taskFilter, setTaskFilter] = useState("");
-  const [fullMapOpen, setFullMapOpen] = useState(false);
+  const [previewTask, setPreviewTask] = useState<MapTask | null>(null);
+    const [fullMapOpen, setFullMapOpen] = useState(false);
   const locationEnabled =
     guest ||
     Object.keys(localStorage).some(
@@ -2813,9 +2814,34 @@ function FreshDiscovery({
         ))}
     </div>
   );
-  return (
-    <>
-      <section className="fresh-discovery">
+  
+    return (
+      <>
+        {previewTask && (
+          <div className="task-modal-backdrop" role="presentation" onMouseDown={() => setPreviewTask(null)} style={{ zIndex: 99999 }}>
+            <section className="task-modal elite-glass" style={{ padding: '40px', maxWidth: '550px', background: '#0B132B' }} role="dialog" onMouseDown={(e) => e.stopPropagation()}>
+              <button type="button" className="task-modal-close" onClick={() => setPreviewTask(null)}>✕</button>
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
+                <span className="badge cat-general" style={{ background: 'rgba(28, 146, 134, 0.2)', color: '#46d6a3', padding: '6px 12px', borderRadius: '12px' }}>{previewTask.categoryName || 'General'}</span>
+                <span style={{ color: '#879cbd', fontSize: '13px' }}>📍 {previewTask.location_label}</span>
+              </div>
+              
+              <h2 style={{ marginBottom: '15px', fontSize: '24px', color: '#fff' }}>{previewTask.title}</h2>
+              <div style={{ color: '#e4bd42', marginBottom: '24px', fontWeight: 'bold', fontSize: '20px' }}>
+                {previewTask.is_service_swap ? previewTask.swap_details : `${previewTask.currency} ${previewTask.commission_amount || 0}`}
+              </div>
+              
+              <p style={{ color: '#a5b7d6', lineHeight: 1.6, marginBottom: '40px', fontSize: '15px' }}>{previewTask.description}</p>
+              
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <h3 style={{ margin: '0 0 12px', fontSize: '18px', color: '#fff' }}>Join QuestKarte to unlock this task!</h3>
+                <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#879cbd' }}>Sign in to safely apply, message the poster, and get paid.</p>
+                <button className="btn primary" style={{ width: '100%', background: 'linear-gradient(135deg, #1C9286, #159b78)', padding: '14px', border: 'none', borderRadius: '24px', color: 'white', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 10px 20px rgba(28,146,134,0.3)' }} onClick={() => { setPreviewTask(null); window.scrollTo(0,0); }}>Sign In / Create Account</button>
+              </div>
+            </section>
+          </div>
+        )}
+        <section className="fresh-discovery">
         <section className="panel map-panel">
           <div className="panel-title-row">
             <div>
@@ -2856,7 +2882,10 @@ function FreshDiscovery({
             </button>
           </div>
           {radiusControl()}
-          <TaskMap position={position} radius={radius} tasks={visibleTasks as unknown as TaskMapPin[]} onApply={() => alert('Please sign in or use the main feed to apply for tasks.')} />
+          <TaskMap position={position} radius={radius} tasks={visibleTasks as unknown as TaskMapPin[]} onApply={(id) => {
+                const pt = visibleTasks.find((t: any) => t.id === id);
+                if (pt) setPreviewTask(pt as any);
+              }} />
         </section>
         <section className="panel fresh-trust">
           <div className="snapshot-heading">
@@ -2946,7 +2975,10 @@ function FreshDiscovery({
                 radius={radius}
                 tasks={visibleTasks as unknown as TaskMapPin[]}
                 full
-                onApply={() => alert('Please sign in or use the main feed to apply for tasks.')}
+                onApply={(id) => {
+                const pt = visibleTasks.find((t: any) => t.id === id);
+                if (pt) setPreviewTask(pt as any);
+              }}
               />
             <p className="map-caption">
               Category markers: tutoring 📚 · cleaning 🧹 · delivery 🛵 · design
@@ -3039,7 +3071,7 @@ function TaskMap({ position, radius, tasks, full = false, onApply }: { position:
       >
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         <MapPanTo position={position} />
         {position && (
@@ -4774,7 +4806,7 @@ function DiscoverySide() {
           >
             <TileLayer
               attribution="&copy; OpenStreetMap contributors"
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             />
             <MapPanTo position={position} />
             {position && (
