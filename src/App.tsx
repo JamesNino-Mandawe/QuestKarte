@@ -206,7 +206,13 @@ function LegacyAppShell({
       ? session.user.user_metadata.full_name
       : "Demo Member");
   const accountInitial = displayName[0]?.toUpperCase() || "M";
-  const [page, setPage] = useState<Page>(staffRole ? "staff" : "home");
+  const [page, setPage] = useState<Page>(() => {
+    const saved = localStorage.getItem('questkarte-active-page');
+    return (saved as Page) || (staffRole ? "staff" : "home");
+  });
+  useEffect(() => {
+    if (page) localStorage.setItem('questkarte-active-page', page);
+  }, [page]);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState("Recommended");
   const [saved, setSaved] = useState<Array<number | string>>([]);
@@ -689,12 +695,24 @@ function AppShell({
     (session && typeof session.user.user_metadata.full_name === "string"
       ? session.user.user_metadata.full_name
       : "Member");
-  const [page, setPage] = useState<Page>(staffRole ? "staff" : "home");
+  const [page, setPage] = useState<Page>(() => {
+    const saved = localStorage.getItem('questkarte-active-page');
+    return (saved as Page) || (staffRole ? "staff" : "home");
+  });
+  useEffect(() => {
+    if (page) localStorage.setItem('questkarte-active-page', page);
+  }, [page]);
   const [staffTab, setStaffTab] = useState<StaffTab>(
     staffRole === "admin" ? "overview" : "task_review",
   );
   const [query, setQuery] = useState("");
   const [chatTaskId, setChatTaskId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const handleNav = () => setPage("tasks");
+    window.addEventListener('navigate-tasks', handleNav);
+    return () => window.removeEventListener('navigate-tasks', handleNav);
+  }, []);
   const accountInitial = displayName[0]?.toUpperCase() || "M";
 
   const memberNav = (
@@ -4005,9 +4023,9 @@ function FreshChatReal({
                 </div>
                 <div>
                   <div className="thread-name">{current.otherName}</div>
-                  <div className="thread-status-text">
-                    {isOnline ? "Active now" : "Offline"}
-                  </div>
+                  <div className="thread-status-text" style={{ color: isOnline ? '#159b78' : '#a43f3f', fontWeight: 'bold' }}>
+    {isOnline ? "Online" : "Offline"}
+  </div>
                 </div>
               </div>
             </div>
@@ -4125,9 +4143,12 @@ function FreshChatReal({
             </div>
           </>
         ) : (
-          <div className="fresh-empty-view">
-            <h2>Select a conversation</h2>
-            <p>Choose a task conversation from the list.</p>
+          <div className="fresh-empty-view" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', background: 'linear-gradient(135deg, #0e1633, #16224d)', color: '#fff', borderRadius: '16px', boxShadow: 'inset 0 0 100px rgba(0,0,0,0.2)' }}>
+            <div style={{ background: 'rgba(70,214,163,0.1)', color: '#46d6a3', width: 80, height: 80, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            </div>
+            <h2 style={{ margin: '0 0 10px', fontSize: 24 }}>Your Messages</h2>
+            <p style={{ color: '#879cbd', maxWidth: 300, textAlign: 'center', margin: 0, lineHeight: 1.5 }}>Select a conversation from the left to start coordinating your tasks safely.</p>
           </div>
         )}
       </section>

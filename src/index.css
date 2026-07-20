@@ -391,3 +391,20 @@ body,button,input,textarea{font-family:'DM Sans',ui-sans-serif,system-ui,sans-se
 .map-panel {
   min-height: 600px;
 }
+
+.quest-map-task-popup .leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4) !important;
+  background: #101d57 !important;
+}
+.quest-map-task-popup .leaflet-popup-content {
+  margin: 0 !important;
+  width: 320px !important;
+  min-width: 320px !important;
+  max-width: 320px !important;
+}
+.quest-map-task-popup .leaflet-popup-tip {
+  background: #101d57 !important;
+}

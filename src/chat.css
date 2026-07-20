@@ -214,3 +214,25 @@
   width: 40px;
   height: 40px;
 }
+
+.chat-attach-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: #74819c;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+.chat-attach-btn:hover {
+  background: #f0f3f8;
+  color: #159b78;
+}
+.chat-attach-btn svg {
+  width: 22px;
+  height: 22px;
+}
