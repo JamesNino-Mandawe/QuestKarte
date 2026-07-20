@@ -3316,7 +3316,24 @@ function TaskLifecycleCard({
         )}
       <div className="tlc-header">
         <div className="tlc-header-left">
-          <div className="tlc-title">{task.title}</div>
+          <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {task.title}
+              {task.status === "completed" && (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ fontSize: 11, padding: '4px 8px', background: '#e1f5e8', color: '#159b78', border: '1px solid #c2e6d1', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
+                  onClick={() => {
+                    if (window.confirm('Remove this finished task from your history?')) {
+                      localStorage.setItem('dismissed-task-' + task.id, 'true');
+                      window.location.reload();
+                    }
+                  }}
+                >
+                  Clear History
+                </button>
+              )}
+            </div>
           <div className="tlc-meta">
             <span className="tlc-category">
               {task.category?.name || "Task"}
@@ -3949,15 +3966,13 @@ function FreshChatReal({
       return;
     }
 
-    const { data: signed } = await supabase.storage
-      .from("task-attachments")
-      .createSignedUrl(path, 31536000);
+    // Removed createSignedUrl since we use getPublicUrl dynamically
     const type = file.type.startsWith("image/") ? "image" : "file";
 
     const { error: dbErr } = await supabase.rpc("send_message_safe", {
       p_conversation_id: selected,
       p_body: "Sent an attachment",
-      p_attachment_url: signed?.signedUrl || path,
+      p_attachment_url: path,
       p_attachment_type: type,
       p_is_system: false,
     });
@@ -4073,14 +4088,14 @@ function FreshChatReal({
                       {msg.attachment_url &&
                         msg.attachment_type === "image" && (
                           <img
-                            src={msg.attachment_url}
+                            src={msg.attachment_url.startsWith('http') ? msg.attachment_url : supabase.storage.from("task-attachments").getPublicUrl(msg.attachment_url).data.publicUrl}
                             alt="Attachment"
                             className="msg-attachment-img"
                           />
                         )}
                       {msg.attachment_url && msg.attachment_type === "file" && (
                         <a
-                          href={msg.attachment_url}
+                          href={msg.attachment_url.startsWith('http') ? msg.attachment_url : supabase.storage.from("task-attachments").getPublicUrl(msg.attachment_url).data.publicUrl}
                           target="_blank"
                           rel="noreferrer"
                           className="msg-attachment-file"
@@ -7348,7 +7363,24 @@ function TaskWorkspace({
       <article className="task-lifecycle-card">
         <div className="tlc-header">
           <div className="tlc-header-left">
-            <div className="tlc-title">{task.title}</div>
+            <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {task.title}
+              {task.status === "completed" && (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ fontSize: 11, padding: '4px 8px', background: '#e1f5e8', color: '#159b78', border: '1px solid #c2e6d1', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
+                  onClick={() => {
+                    if (window.confirm('Remove this finished task from your history?')) {
+                      localStorage.setItem('dismissed-task-' + task.id, 'true');
+                      window.location.reload();
+                    }
+                  }}
+                >
+                  Clear History
+                </button>
+              )}
+            </div>
             <div className="tlc-meta">
               <span className="tlc-reward">{fmtReward(task)}</span>
               <span>·</span>
@@ -7630,7 +7662,24 @@ function TaskWorkspace({
       <article className="task-lifecycle-card">
         <div className="tlc-header">
           <div className="tlc-header-left">
-            <div className="tlc-title">{task.title}</div>
+            <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {task.title}
+              {task.status === "completed" && (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ fontSize: 11, padding: '4px 8px', background: '#e1f5e8', color: '#159b78', border: '1px solid #c2e6d1', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
+                  onClick={() => {
+                    if (window.confirm('Remove this finished task from your history?')) {
+                      localStorage.setItem('dismissed-task-' + task.id, 'true');
+                      window.location.reload();
+                    }
+                  }}
+                >
+                  Clear History
+                </button>
+              )}
+            </div>
             <div className="tlc-meta">
               <span className="tlc-reward">{fmtReward(task)}</span>
               <span>·</span>
@@ -7997,7 +8046,7 @@ function TaskWorkspace({
       ) : (
         <section className="task-work-list">
           {applied.length ? (
-            applied.map((app) => (
+            applied.filter(app => app.task && localStorage.getItem('dismissed-task-' + app.task.id) !== 'true').map((app) => (
               <ApplicantTaskCard key={app.id} application={app} />
             ))
           ) : (
