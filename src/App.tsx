@@ -7419,8 +7419,7 @@ function TaskWorkspace({
     void load();
   };
 
-  const submitReview = async (task: FullTask, isClient: boolean) => {
-    const rating = ratings[task.id] || 0;
+  const submitReview = async (task: FullTask, isClient: boolean, rating: number, comment: string) => {
     if (!rating) {
       setNotice("Choose a star rating first.");
       return;
@@ -7437,7 +7436,7 @@ function TaskWorkspace({
         reviewer_id: session.user.id,
         reviewee_id: revieweeId,
         rating,
-        comment: comments[task.id]?.trim() || null,
+        comment: comment.trim() || null,
       });
     if (error) {
       setNotice(error.message);
