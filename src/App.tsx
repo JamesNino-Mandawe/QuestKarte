@@ -8,7 +8,7 @@ import {
   Marker,
   Popup,
   TileLayer,
-  useMap, useMapEvents,
+  useMap,
 } from "react-leaflet";
 import { divIcon } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -4745,45 +4745,6 @@ function FreshAccount({
 }
 
 
-function TrustHistoryModal({ onClose }: { onClose: () => void }) {
-  const [events, setEvents] = useState<{ id: string, created_at: string, points: number, reason: string }[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase
-      .from('trust_events')
-      .select('id, created_at, points, reason')
-      .order('created_at', { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
-        setEvents(data || []);
-        setLoading(false);
-      });
-  }, []);
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 99999, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)" }}>
-      <div className="panel" style={{ width: '100%', maxWidth: '400px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-          <h3 style={{ margin: 0 }}>Trust Factor History</h3>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: 20, cursor: 'pointer' }}>×</button>
-        </div>
-        
-        <div style={{ overflowY: 'auto', flex: 1, paddingRight: 10 }}>
-          {loading ? (
-            <p>Loading history...</p>
-          ) : events.length === 0 ? (
-            <p style={{ color: '#7a8daa', textAlign: 'center', margin: '20px 0' }}>No history found.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {events.map((ev) => (
-                <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: '#f7f9fe', borderRadius: 8, border: '1px solid #e1e7f3' }}>
-                  <div>
-                    <strong style={{ display: 'block', fontSize: 13, color: '#12255c' }}>{ev.reason}</strong>
-                    <span style={{ fontSize: 11, color: '#7a8daa' }}>{new Date(ev.created_at).toLocaleString()}</span>
-                  </div>
-                  <span style={{ fontWeight: 'bold', color: ev.points > 0 ? '#159b78' : ev.points < 0 ? '#d93025' : '#7a8daa', display: 'flex', alignItems: 'center' }}>
-                    {ev.points > 0 ? '+' : ''}{ev.points}
                   </span>
                 </div>
               ))}
