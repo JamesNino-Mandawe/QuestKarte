@@ -4449,7 +4449,7 @@ function FreshAccount({
   const [bio, setBio] = useState(profile?.bio || "");
   const [city, setCity] = useState(profile?.city || "Cebu City");
   const [skills, setSkills] = useState<string[]>(profile?.skills || []);
-  const [showTrustHistory, setShowTrustHistory] = useState(false);
+
   const [avatar, setAvatar] = useState<string | null>(
     profile?.avatar_url || null,
   );
@@ -4740,18 +4740,6 @@ function FreshAccount({
           status={visible?.verification_status || "unverified"}
         />
       )}
-    </div>
-  );
-}
-
-
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
