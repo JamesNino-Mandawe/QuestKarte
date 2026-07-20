@@ -41,7 +41,7 @@ export default function LandingPage({ onStart, onBrowse }: LandingPageProps) {
     <main className="landing">
       <header className={`landing-nav ${scrolled ? "is-scrolled" : ""}`}>
         <button className="landing-brand" onClick={() => goTo("top")} aria-label="QuestKarte home">
-          <img src="/questkarte-logo.png" alt="" />
+          <img src="/questkarte-logo.svg" alt="" />
           <span>QuestKarte<small>CEBU TASK MARKETPLACE</small></span>
         </button>
         <nav className={menuOpen ? "landing-links open" : "landing-links"} aria-label="Landing page navigation">
@@ -56,7 +56,7 @@ export default function LandingPage({ onStart, onBrowse }: LandingPageProps) {
 
       <section className="landing-hero" id="top">
         <div className="hero-photo" />
-        <div className="hero-grid" /><div className="hero-compass" aria-hidden="true">✦</div>
+        <div className="hero-grid" />
         <div className="hero-content reveal">
           <p className="landing-eyebrow"><span /> CEBU CITY'S TASK MARKETPLACE</p>
           <h1>Your next quest<br /><em>starts here.</em></h1>
@@ -102,7 +102,7 @@ export default function LandingPage({ onStart, onBrowse }: LandingPageProps) {
 
       <section className="landing-section cta-section"><div className="cta-glow" /><p className="landing-eyebrow">READY WHEN YOU ARE</p><h2>Your quest<br /><em>begins now.</em></h2><p>Join Cebu City members creating clearer, more accountable ways to get things done.</p><div className="hero-buttons"><button className="coral-button large" onClick={onStart}>Begin your quest <span>→</span></button><button className="outline-button large" onClick={onBrowse}>Browse tasks <span>↗</span></button></div><small>Free to create an account. Features are built around real task activity.</small></section>
 
-      <footer className="landing-footer"><div className="footer-brand"><img src="/questkarte-logo.png" alt="QuestKarte" /><p>Every task is a quest. Every quest deserves its karte.</p></div><div><h4>Platform</h4><button onClick={onBrowse}>Browse tasks</button><button onClick={onStart}>Post a task</button><button onClick={() => goTo("trust")}>Trust system</button></div><div><h4>About</h4><button onClick={() => goTo("how-it-works")}>How it works</button><button onClick={() => goTo("students")}>For students</button><button onClick={() => goTo("safety")}>Safety</button></div><div><h4>Support</h4><button onClick={onStart}>Log in</button><button onClick={onStart}>Create account</button><a href="mailto:hello@questkarte.local">Contact us</a></div><p className="footer-bottom">© 2026 QuestKarte · Cebu City, Philippines · Built by Group 6 Seven</p></footer>
+      <footer className="landing-footer"><div className="footer-brand"><img src="/questkarte-logo.svg" alt="QuestKarte" /><p>Every task is a quest. Every quest deserves its karte.</p></div><div><h4>Platform</h4><button onClick={onBrowse}>Browse tasks</button><button onClick={onStart}>Post a task</button><button onClick={() => goTo("trust")}>Trust system</button></div><div><h4>About</h4><button onClick={() => goTo("how-it-works")}>How it works</button><button onClick={() => goTo("students")}>For students</button><button onClick={() => goTo("safety")}>Safety</button></div><div><h4>Support</h4><button onClick={onStart}>Log in</button><button onClick={onStart}>Create account</button><a href="mailto:hello@questkarte.local">Contact us</a></div><p className="footer-bottom">© 2026 QuestKarte · Cebu City, Philippines · Built by Group 6 Seven</p></footer>
     </main>
   );
 }

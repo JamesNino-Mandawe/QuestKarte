@@ -19,7 +19,7 @@ import "./member-enhancements.css";
 import "./task-workspace.css";
 import "./chat.css";
 import "./notifications.css";
-import TaskCard, { type Quest } from "./TaskCard";
+import TaskCard, { TaskDetailModal, type Quest } from "./TaskCard";
 import AuthScreen from "./AuthScreen";
 import LandingPage from "./LandingPage";
 import VerificationGate from "./VerificationGate";
@@ -1009,7 +1009,7 @@ function App() {
   if (loading)
     return (
       <div className="app-boot">
-        <img src="/questkarte-logo.png" alt="" />
+        <img src="/questkarte-logo.svg" alt="" />
         <span>Preparing your quest board…</span>
       </div>
     );
@@ -1027,10 +1027,6 @@ function App() {
     return (
       <AuthScreen
         onExplore={() => setDemoMode(true)}
-        onStaffPreview={(role) => {
-          setStaffPreview(role);
-          setDemoMode(true);
-        }}
       />
     );
   if (session && passwordRecovery)
@@ -1038,7 +1034,7 @@ function App() {
   if (session && profileLoading)
     return (
       <div className="app-boot">
-        <img src="/questkarte-logo.png" alt="" />
+        <img src="/questkarte-logo.svg" alt="" />
         <span>Loading your member profile…</span>
       </div>
     );
@@ -1139,7 +1135,7 @@ function PasswordRecovery({ onDone }: { onDone: () => void }) {
     <main className="auth-page">
       <section className="auth-card">
         <div className="auth-brand">
-          <img src="/questkarte-logo.png" alt="QuestKarte emblem" />
+          <img src="/questkarte-logo.svg" alt="QuestKarte emblem" />
           <div>
             <span>QuestKarte</span>
             <small>Secure account recovery</small>
@@ -1202,7 +1198,7 @@ function VerificationApprovedScreen({
   return (
     <main className="verification-approved-page">
       <section className="verification-approved-card">
-        <img src="/questkarte-logo.png" alt="QuestKarte" />
+        <img src="/questkarte-logo.svg" alt="QuestKarte" />
         <span className="eyebrow">Verification complete</span>
         <h1>You are verified, {name}.</h1>
         <p>
@@ -1301,7 +1297,7 @@ function LegacyProfileSetup({
     <main className="profile-setup-page">
       <section className="profile-setup-card">
         <div className="setup-brand">
-          <img src="/questkarte-logo.png" alt="QuestKarte" />
+          <img src="/questkarte-logo.svg" alt="QuestKarte" />
           <div>
             <strong>QuestKarte</strong>
             <span>Member profile setup</span>
@@ -1435,6 +1431,7 @@ function ProfileSetup({
   const [avatar, setAvatar] = useState<string | null>(null);
   const [customSkill, setCustomSkill] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [notice, setNotice] = useState("");
   const skillOptions = [
     "Cleaning",
@@ -1499,9 +1496,18 @@ function ProfileSetup({
   };
   return (
     <main className="profile-setup-page">
+      {showCamera && (
+        <CameraCapture
+          onCapture={(file) => {
+            choosePhoto(file);
+            setShowCamera(false);
+          }}
+          onClose={() => setShowCamera(false)}
+        />
+      )}
       <section className="profile-setup-card">
         <div className="setup-brand">
-          <img src="/questkarte-logo.png" alt="QuestKarte" />
+          <img src="/questkarte-logo.svg" alt="QuestKarte" />
           <div>
             <strong>QuestKarte</strong>
             <span>Member profile setup</span>
@@ -1528,15 +1534,13 @@ function ProfileSetup({
               <strong>Profile photo</strong>
               <p>Use your camera now or select a saved image.</p>
               <div className="profile-photo-actions">
-                <label className="upload-photo-link">
+                <button
+                  type="button"
+                  className="upload-photo-link"
+                  onClick={() => setShowCamera(true)}
+                >
                   Use camera
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    capture="user"
-                    onChange={(event) => choosePhoto(event.target.files?.[0])}
-                  />
-                </label>
+                </button>
                 <label className="upload-photo-link">
                   Choose file
                   <input
@@ -3097,6 +3101,7 @@ function TaskLifecycleCard({
     ) {
       void fetchDeliverables();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.status]);
 
   const fetchDeliverables = async () => {
@@ -3523,17 +3528,8 @@ function FreshTasks({
   };
   useEffect(() => {
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user.id]);
-
-  const updateTaskStatus = async (taskId: string, newStatus: string) => {
-    const { error } = await supabase.rpc("update_task_progress", {
-      target_task_id: taskId,
-      next_status: newStatus,
-    });
-    if (!error) {
-      void load();
-    }
-  };
 
   const entries = tab === "posted" ? posted : applied;
 
@@ -3651,6 +3647,7 @@ function FreshChatReal({
     otherId: string;
     otherName: string;
     otherAvatar: string | null;
+    title: string | null;
   };
   type ChatMessage = {
     id: string;
@@ -3740,6 +3737,7 @@ function FreshChatReal({
           otherId,
           otherName: otherProfile?.full_name || "QuestKarte member",
           otherAvatar: otherProfile?.avatar_url || null,
+          title: c.task_id ? (taskMap.get(c.task_id)?.title || null) : null,
         };
       }),
     );
@@ -3798,6 +3796,7 @@ function FreshChatReal({
       void supabase.removeChannel(msgChannel);
       void supabase.removeChannel(presenceChannel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user.id, selected]);
 
   useEffect(() => {
@@ -3815,6 +3814,7 @@ function FreshChatReal({
       ? conversations.find((c) => c.task_id === initialTaskId)
       : null;
     if (target && target.id !== selected) choose(target.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTaskId, conversations, selected]);
 
   const send = async (event: FormEvent) => {
@@ -4309,6 +4309,7 @@ function FreshAccount({
   );
   const [customSkill, setCustomSkill] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [notice, setNotice] = useState("");
   const standardSkills = [
     "Cleaning",
@@ -4378,6 +4379,15 @@ function FreshAccount({
   const trustRank = getTrustRank(trustScore);
   return (
     <div className="fresh-account view">
+      {showCamera && (
+        <CameraCapture
+          onCapture={(file) => {
+            choosePhoto(file);
+            setShowCamera(false);
+          }}
+          onClose={() => setShowCamera(false)}
+        />
+      )}
       <section className="panel fresh-profile-hero">
         <div className="fresh-profile-avatar">
           {visible?.avatar_url ? (
@@ -4438,15 +4448,13 @@ function FreshAccount({
                 <strong>Profile photo</strong>
                 <p>Take a current photo or select one from your device.</p>
                 <div className="profile-photo-actions">
-                  <label className="upload-photo-link">
+                  <button
+                    type="button"
+                    className="upload-photo-link"
+                    onClick={() => setShowCamera(true)}
+                  >
                     Use camera
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      capture="user"
-                      onChange={(event) => choosePhoto(event.target.files?.[0])}
-                    />
-                  </label>
+                  </button>
                   <label className="upload-photo-link">
                     Choose file
                     <input
@@ -5067,8 +5075,6 @@ function PostTask({
   const [description, setDescription] = useState("");
   const [commission, setCommission] = useState("");
   const [location, setLocation] = useState("");
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [photoError, setPhotoError] = useState("");
   const [savingTask, setSavingTask] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const getTaskCoordinates = () =>
@@ -5421,14 +5427,6 @@ function Account({
   );
 }
 
-type ReviewTask = {
-  id: string;
-  title: string;
-  description: string;
-  location_label: string;
-  created_at: string;
-  posted_by: string;
-};
 
 function StaffDashboard({
   role,
@@ -5443,7 +5441,6 @@ function StaffDashboard({
   activeTab: StaffTab;
   onTabChange: (tab: StaffTab) => void;
 }) {
-  const isAdmin = role === "admin";
   return (
     <StaffWorkspace
       role={role}
@@ -5472,6 +5469,12 @@ type StaffTaskRecord = {
   location_label: string;
   created_at: string;
   posted_by: string;
+  category_id: string | null;
+  commission_amount: number | null;
+  currency: string;
+  is_service_swap: boolean;
+  swap_details: string | null;
+  requires_student_verification: boolean;
 };
 type VerificationRecord = {
   id: string;
@@ -5482,6 +5485,7 @@ type VerificationRecord = {
   document_name: string;
   document_path: string;
   created_at: string;
+  user_id: string;
 };
 type VerificationEvidencePreview = {
   label: string;
@@ -5562,6 +5566,9 @@ function StaffWorkspace({
     title: string;
     items: VerificationEvidencePreview[];
   } | null>(null);
+  const [rejectModal, setRejectModal] = useState<{ type: 'verification' | 'task'; record: VerificationRecord | StaffTaskRecord } | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [taskPreview, setTaskPreview] = useState<Quest | null>(null);
 
   useEffect(() => {
     setTab(activeTab);
@@ -5589,14 +5596,14 @@ function StaffWorkspace({
     ] = await Promise.all([
       supabase
         .from("tasks")
-        .select("id,title,description,location_label,created_at,posted_by")
+        .select("id,title,description,location_label,created_at,posted_by,category_id,commission_amount,currency,is_service_swap,swap_details,requires_student_verification")
         .eq("status", "draft")
         .eq("moderation_state", "pending_review")
         .order("created_at", { ascending: true }),
       supabase
         .from("verification_requests")
         .select(
-          "id,type,status,school_name,institution_or_company,document_name,document_path,created_at",
+          "id,type,status,school_name,institution_or_company,document_name,document_path,created_at,user_id",
         )
         .eq("status", "pending")
         .order("created_at", { ascending: true }),
@@ -5659,21 +5666,20 @@ function StaffWorkspace({
 
   useEffect(() => {
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id]);
 
-  const approveTask = async (task: StaffTaskRecord, approved: boolean) => {
+  const approveTask = async (task: StaffTaskRecord, approved: boolean, modalReason?: string) => {
     if (!session) {
       setNotice("Sign in with a real staff account to make decisions.");
       return;
     }
-    const reason = approved
-      ? ""
-      : window
-          .prompt(
-            "Explain the rejection. The task poster will see this privately.",
-          )
-          ?.trim();
-    if (!approved && !reason) return;
+    if (!approved && !modalReason) {
+      setRejectModal({ type: 'task', record: task });
+      setRejectReason("");
+      return;
+    }
+    const reason = modalReason || "";
     const result = await supabase
       .from("tasks")
       .update(
@@ -5719,27 +5725,64 @@ function StaffWorkspace({
   const decideVerification = async (
     record: VerificationRecord,
     approved: boolean,
+    reason?: string,
   ) => {
     if (!session) return;
-    const reason = approved
-      ? null
-      : window.prompt("Explain the verification rejection.")?.trim();
-    if (!approved && !reason) return;
+    if (!approved && !reason) {
+      // Open rejection modal instead of window.prompt
+      setRejectModal({ type: 'verification', record });
+      setRejectReason("");
+      return;
+    }
     const { error } = await supabase
       .from("verification_requests")
       .update({
         status: approved ? "approved" : "rejected",
         reviewed_by: session.user.id,
         reviewed_at: new Date().toISOString(),
-        rejection_reason: reason,
+        rejection_reason: reason || null,
       })
       .eq("id", record.id);
+      
+    if (!error) {
+      // Also update the profile verification_status directly
+      await supabase
+        .from("profiles")
+        .update({
+          verification_status: approved ? "verified" : "rejected",
+        })
+        .eq("id", record.user_id);
+        
+      // Fetch user email via RPC to send email
+      try {
+        const { data: contact } = await supabase.rpc('get_user_contact_info', { uid: record.user_id });
+        if (contact && contact.email) {
+          const emailSubject = approved ? 'QuestKarte — Your account has been verified! ✓' : 'QuestKarte — Verification update required';
+          const emailBody = approved 
+            ? `<div style="background-color:#071124;padding:40px 20px;"><table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;margin:0 auto;background-color:#0f1b38;border-radius:16px;border:1px solid #1e2d54;overflow:hidden;"><tr><td style="background-color:#0a1530;padding:30px 36px 22px;border-bottom:1px solid #1a2847;"><div style="font-size:26px;font-weight:900;color:#f0c05a;letter-spacing:4px;font-family:Georgia,serif;">QUESTKARTE</div><div style="font-size:16px;font-weight:700;color:#c9d4ec;margin-top:14px;">Account Verified</div></td></tr><tr><td style="padding:30px 36px 10px;"><p style="color:#c9d4ec;font-size:15px;margin:0 0 4px;font-family:'Segoe UI',Arial,sans-serif;">Hello ${contact.name},</p></td></tr><tr><td style="padding:0 36px;"><div style="background-color:rgba(70,214,163,0.1);border:2px solid rgba(70,214,163,0.4);border-radius:14px;padding:22px;text-align:center;margin:20px 0;"><span style="font-size:36px;color:#46d6a3;">✓</span><p style="font-size:18px;font-weight:800;color:#46d6a3;margin:8px 0 0;">Verification Approved</p></div><p style="color:#8392b3;font-size:14px;line-height:1.6;font-family:'Segoe UI',Arial,sans-serif;">Your identity documents have been reviewed and approved by our team. You now have full access to the QuestKarte marketplace.</p></td></tr></table></div>`
+            : `<div style="background-color:#071124;padding:40px 20px;"><table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;margin:0 auto;background-color:#0f1b38;border-radius:16px;border:1px solid #1e2d54;overflow:hidden;"><tr><td style="background-color:#0a1530;padding:30px 36px 22px;border-bottom:1px solid #1a2847;"><div style="font-size:26px;font-weight:900;color:#f0c05a;letter-spacing:4px;font-family:Georgia,serif;">QUESTKARTE</div><div style="font-size:16px;font-weight:700;color:#c9d4ec;margin-top:14px;">Verification Update</div></td></tr><tr><td style="padding:30px 36px 10px;"><p style="color:#c9d4ec;font-size:15px;margin:0 0 4px;font-family:'Segoe UI',Arial,sans-serif;">Hello ${contact.name},</p></td></tr><tr><td style="padding:0 36px;"><div style="background-color:rgba(255,107,82,0.08);border:2px solid rgba(255,107,82,0.4);border-radius:14px;padding:22px;text-align:center;margin:20px 0;"><span style="font-size:36px;color:#ff6b52;">⚠</span><p style="font-size:18px;font-weight:800;color:#ff6b52;margin:8px 0 0;">Additional Information Needed</p></div><p style="color:#8392b3;font-size:14px;line-height:1.6;font-family:'Segoe UI',Arial,sans-serif;">Our team reviewed your documents but was unable to approve your verification at this time.</p><div style="background-color:#111d3a;border-left:3px solid #ff6b52;border-radius:0 10px 10px 0;padding:14px 18px;margin:16px 0;"><p style="color:#7a8aaa;font-size:13px;margin:0;line-height:1.6;font-family:'Segoe UI',Arial,sans-serif;"><strong>Moderator note:</strong> ${reason || 'Please submit clearer documents.'}</p></div><p style="color:#8392b3;font-size:14px;line-height:1.6;margin-top:16px;font-family:'Segoe UI',Arial,sans-serif;">Please sign in to QuestKarte and submit a new verification request with corrected documents.</p></td></tr></table></div>`;
+          
+          const { error: invokeError } = await supabase.functions.invoke('send-email', {
+            body: { to: contact.email, subject: emailSubject, html: emailBody }
+          });
+          
+          if (invokeError) {
+            console.error("Email send failed:", invokeError);
+            setNotice("Action succeeded, but email failed to send. Check console.");
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to send email:", err);
+      }
+    }
+    
     setNotice(
       error
         ? error.message
         : approved
-          ? "Verification approved."
-          : "Verification rejected with a reason.",
+          ? "Verification approved. Email sent successfully."
+          : "Verification rejected. Email sent successfully."
     );
     if (!error) await load();
   };
@@ -5792,6 +5835,44 @@ function StaffWorkspace({
           ? "Student verification evidence"
           : "Professional verification evidence",
       items,
+    });
+  };
+
+  const openTaskEvidence = async (task: StaffTaskRecord) => {
+    const { data } = await supabase
+      .from("task_attachments")
+      .select("storage_path")
+      .eq("task_id", task.id)
+      .order("created_at");
+      
+    const images: string[] = [];
+    if (data && data.length > 0) {
+      await Promise.all(
+        data.map(async (doc) => {
+          const { data: signed } = await supabase.storage.from("task-attachments").createSignedUrl(doc.storage_path, 3600);
+          if (signed?.signedUrl) images.push(signed.signedUrl);
+        })
+      );
+    }
+    
+    const poster = members.find((m) => m.id === task.posted_by);
+    const category = categories.find((c) => c.id === task.category_id);
+    
+    setTaskPreview({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      category: category?.name || "General",
+      commission: task.is_service_swap
+        ? task.swap_details || "Service swap"
+        : `${task.currency === "PHP" ? "PHP " : ""}${Number(task.commission_amount || 0).toLocaleString()}`,
+      location: task.location_label,
+      schedule: `Submitted ${new Date(task.created_at).toLocaleDateString()}`,
+      posterName: poster?.full_name || "QuestKarte member",
+      trust: `Trust Factor ${poster?.trust_factor || 0}`,
+      initials: (poster?.full_name || "QM").slice(0, 2).toUpperCase(),
+      kind: task.is_service_swap ? "swap" : task.requires_student_verification ? "student" : undefined,
+      images,
     });
   };
 
@@ -5940,6 +6021,12 @@ function StaffWorkspace({
                 </div>
                 <div className="staff-actions">
                   <button
+                    className="btn secondary"
+                    onClick={() => void openTaskEvidence(task)}
+                  >
+                    View Post
+                  </button>
+                  <button
                     className="btn primary"
                     onClick={() => void approveTask(task, true)}
                   >
@@ -5947,7 +6034,10 @@ function StaffWorkspace({
                   </button>
                   <button
                     className="btn danger"
-                    onClick={() => void approveTask(task, false)}
+                    onClick={() => {
+                      setRejectModal({ type: 'task', record: task });
+                      setRejectReason("");
+                    }}
                   >
                     Reject
                   </button>
@@ -5994,7 +6084,10 @@ function StaffWorkspace({
                   </button>
                   <button
                     className="btn danger"
-                    onClick={() => void decideVerification(record, false)}
+                    onClick={() => {
+                      setRejectModal({ type: 'verification', record });
+                      setRejectReason("");
+                    }}
                   >
                     Reject
                   </button>
@@ -6203,6 +6296,12 @@ function StaffWorkspace({
 
   return (
     <div className="staff-workspace view">
+      {taskPreview && (
+        <TaskDetailModal 
+          quest={taskPreview} 
+          onClose={() => setTaskPreview(null)} 
+        />
+      )}
       <section className="staff-workspace-hero">
         <div>
           <span className="eyebrow">QuestKarte staff access</span>
@@ -6248,6 +6347,59 @@ function StaffWorkspace({
           preview={evidencePreview}
           onClose={() => setEvidencePreview(null)}
         />
+      )}
+      {rejectModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'grid', placeItems: 'center', padding: '24px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }} role="presentation" onClick={() => setRejectModal(null)}>
+          <div style={{ position: 'relative', width: 'min(100%, 480px)', borderRadius: '18px', padding: '30px', background: '#fff', boxShadow: '0 30px 80px rgba(0,0,0,.3)', color: '#1a2847' }} onClick={(e) => e.stopPropagation()}>
+            <button type="button" style={{ position: 'absolute', right: '14px', top: '12px', border: 0, background: 'transparent', color: '#6b7a9e', fontSize: '24px', cursor: 'pointer' }} onClick={() => setRejectModal(null)} aria-label="Close">×</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+              <span style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fff0ef', display: 'grid', placeItems: 'center', fontSize: '20px', flexShrink: 0 }}>⚠</span>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#1a2847' }}>
+                  {rejectModal.type === 'verification' ? 'Reject Verification' : 'Reject Task'}
+                </h3>
+                <p style={{ margin: '2px 0 0', color: '#6b7a9e', fontSize: '13px' }}>
+                  The {rejectModal.type === 'verification' ? 'member' : 'poster'} will see this reason privately.
+                </p>
+              </div>
+            </div>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 700, fontSize: '13px', color: '#3a4a6a' }}>Rejection reason *</label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder={rejectModal.type === 'verification'
+                ? 'e.g. The uploaded student ID is blurry and unreadable. Please re-submit a clearer photo.'
+                : 'e.g. This task description contains prohibited content.'}
+              rows={4}
+              style={{ width: '100%', padding: '12px 14px', border: '1px solid #d0d9ea', borderRadius: '10px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', color: '#1a2847' }}
+              autoFocus
+            />
+            <p style={{ margin: '8px 0 18px', color: '#9aa2ba', fontSize: '12px', lineHeight: 1.5 }}>
+              This reason will be sent to the {rejectModal.type === 'verification' ? "member's" : "poster's"} email and shown in their dashboard.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button type="button" style={{ padding: '10px 20px', border: '1px solid #d0d9ea', borderRadius: '10px', background: '#fff', color: '#3a4a6a', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }} onClick={() => setRejectModal(null)}>Cancel</button>
+              <button
+                type="button"
+                disabled={!rejectReason.trim()}
+                style={{ padding: '10px 24px', border: 0, borderRadius: '10px', background: rejectReason.trim() ? '#c94a35' : '#e0c9c5', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: rejectReason.trim() ? 'pointer' : 'not-allowed', opacity: rejectReason.trim() ? 1 : 0.7 }}
+                onClick={async () => {
+                  const reason = rejectReason.trim();
+                  if (!reason) return;
+                  if (rejectModal.type === 'verification') {
+                    await decideVerification(rejectModal.record as VerificationRecord, false, reason);
+                  } else {
+                    await approveTask(rejectModal.record as StaffTaskRecord, false);
+                  }
+                  setRejectModal(null);
+                  setRejectReason("");
+                }}
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -6311,91 +6463,10 @@ function VerificationEvidenceModal({
   );
 }
 
-function StaffDashboardLegacy({
-  role,
-  onExit,
-}: {
-  role: StaffRole;
-  onExit: () => void;
-}) {
-  const isAdmin = role === "admin";
-  const cards = isAdmin
-    ? [
-        ["Pending verifications", "18", "Review evidence"],
-        ["Open reports", "7", "Assign moderation"],
-        ["Member health", "98.4%", "View analytics"],
-        ["Staff actions today", "42", "Open audit log"],
-      ]
-    : [
-        ["Verification queue", "18", "Review evidence"],
-        ["Reported content", "7", "Review reports"],
-        ["Open disputes", "3", "Resolve cases"],
-        ["Restricted accounts", "5", "Review restrictions"],
-      ];
-  return (
-    <div className="staff-view view">
-      <section className="staff-banner">
-        <div>
-          <span className="eyebrow">Preview only · staff workspace</span>
-          <h2>{isAdmin ? "Admin command center" : "Moderator console"}</h2>
-          <p>
-            {isAdmin
-              ? "Oversee safety, performance, permissions, and platform decisions."
-              : "Protect the community by reviewing evidence, reports, and disputes."}
-          </p>
-        </div>
-        <button className="btn" onClick={onExit}>
-          Exit preview
-        </button>
-      </section>
-      <div className="staff-metrics">
-        {cards.map(([label, value, action]) => (
-          <button className="staff-metric" key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
-            <small>{action} →</small>
-          </button>
-        ))}
-      </div>
-      <div className="staff-grid">
-        <section className="panel staff-queue">
-          <h3>{isAdmin ? "Priority operations" : "Priority review queue"}</h3>
-          {[
-            "Student verification · Janelle R.",
-            "Reported task · Cash transfer request",
-            "Dispute · Task completion pending",
-          ].map((item, index) => (
-            <div className="staff-row" key={item}>
-              <div>
-                <strong>{item}</strong>
-                <span>
-                  {index === 0
-                    ? "Submitted 14 min ago"
-                    : "Needs attention today"}
-                </span>
-              </div>
-              <button className="btn">Review</button>
-            </div>
-          ))}
-        </section>
-        <aside className="panel staff-policy">
-          <h3>{isAdmin ? "Platform control" : "Moderator tools"}</h3>
-          <button>
-            {isAdmin ? "Manage staff roles" : "Verification decisions"}
-          </button>
-          <button>{isAdmin ? "View audit log" : "Content restrictions"}</button>
-          <button>{isAdmin ? "Review analytics" : "Dispute notes"}</button>
-          <p>Every action is recorded in the audit log.</p>
-        </aside>
-      </div>
-    </div>
-  );
-}
-
 const Brand = ({ markOnly = false }: { markOnly?: boolean }) => (
   <div className="brand">
     <div className="brand-mark">
-      <img src="/questkarte-logo.png" alt="QuestKarte emblem" />
+      <img src="/questkarte-logo.svg" alt="QuestKarte emblem" />
     </div>
     {!markOnly && <span className="brand-word">QuestKarte</span>}
   </div>
@@ -6757,6 +6828,8 @@ function TaskWorkspace({
       | "assigned"
       | "in_progress"
       | "pending_client_review"
+      | "swap_in_progress"
+      | "pending_swap_review"
       | "completed"
       | "cancelled"
       | "disputed";
@@ -6771,6 +6844,8 @@ function TaskWorkspace({
     payment_type: string;
     payment_status: string;
     category_id: string | null;
+    is_service_swap: boolean;
+    swap_details: string | null;
   };
   type AcceptedApplication = {
     id: string;
@@ -6784,6 +6859,7 @@ function TaskWorkspace({
     storage_path: string;
     file_name: string;
     mime_type: string;
+    submitted_by: string;
     signedUrl?: string;
   };
 
@@ -6797,11 +6873,13 @@ function TaskWorkspace({
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [cameraTask, setCameraTask] = useState<string | null>(null);
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [uploadingTask, setUploadingTask] = useState<string | null>(null);
   const [confirmingTask, setConfirmingTask] = useState<string | null>(null);
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [comments, setComments] = useState<Record<string, string>>({});
   const [reviewedIds, setReviewedIds] = useState<string[]>([]);
+  const [fullyReviewedTaskIds, setFullyReviewedTaskIds] = useState<string[]>([]);
   const [tfDeltas, setTfDeltas] = useState<Record<string, number>>({});
 
   // ── Load ───────────────────────────────────────────────────────────
@@ -6811,27 +6889,35 @@ function TaskWorkspace({
       supabase
         .from("tasks")
         .select(
-          "id,title,status,moderation_state,assigned_to,posted_by,created_at,deadline_at,completed_at,commission_amount,currency,payment_type,payment_status,category_id",
+          "id,title,status,moderation_state,assigned_to,posted_by,created_at,deadline_at,completed_at,commission_amount,currency,payment_type,payment_status,category_id,is_service_swap,swap_details",
         )
         .eq("posted_by", session.user.id)
         .order("created_at", { ascending: false }),
       supabase
         .from("applications")
         .select(
-          "id,status,created_at,task:tasks(id,title,status,moderation_state,assigned_to,posted_by,created_at,deadline_at,completed_at,commission_amount,currency,payment_type,payment_status,category_id)",
+          "id,status,created_at,task:tasks(id,title,status,moderation_state,assigned_to,posted_by,created_at,deadline_at,completed_at,commission_amount,currency,payment_type,payment_status,category_id,is_service_swap,swap_details)",
         )
         .eq("applicant_id", session.user.id)
         .order("created_at", { ascending: false }),
       supabase
         .from("reviews")
-        .select("task_id")
-        .eq("reviewer_id", session.user.id),
+        .select("task_id, reviewer_id")
+        .or(`reviewer_id.eq.${session.user.id},reviewee_id.eq.${session.user.id}`),
     ]);
     const ownedTasks = (own.data || []) as FullTask[];
     const appliedList = (mine.data || []) as unknown as AcceptedApplication[];
     setPosted(ownedTasks);
     setApplied(appliedList);
-    setReviewedIds((reviewRows.data || []).map((r) => r.task_id));
+    
+    const allReviews = (reviewRows.data || []) as { task_id: string; reviewer_id: string }[];
+    setReviewedIds(allReviews.filter(r => r.reviewer_id === session.user.id).map(r => r.task_id));
+    
+    const reviewCounts = allReviews.reduce((acc, r) => {
+      acc[r.task_id] = (acc[r.task_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    setFullyReviewedTaskIds(Object.keys(reviewCounts).filter(id => reviewCounts[id] >= 2));
 
     // Load deliverables for all active tasks
     const activeTaskIds = [
@@ -6841,6 +6927,8 @@ function TaskWorkspace({
             "assigned",
             "in_progress",
             "pending_client_review",
+            "swap_in_progress",
+            "pending_swap_review",
             "completed",
           ].includes(t.status),
         )
@@ -6853,6 +6941,8 @@ function TaskWorkspace({
               "assigned",
               "in_progress",
               "pending_client_review",
+              "swap_in_progress",
+              "pending_swap_review",
               "completed",
             ].includes(a.task.status),
         )
@@ -6861,7 +6951,7 @@ function TaskWorkspace({
     if (activeTaskIds.length) {
       const { data: delivs } = await supabase
         .from("task_deliverables")
-        .select("id,task_id,storage_path,file_name,mime_type")
+        .select("id,task_id,storage_path,file_name,mime_type,submitted_by")
         .in("task_id", activeTaskIds)
         .order("created_at", { ascending: false });
       const byTask: Record<string, Deliverable[]> = {};
@@ -6882,22 +6972,60 @@ function TaskWorkspace({
   };
   useEffect(() => {
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user.id]);
 
   // ── Helpers ────────────────────────────────────────────────────────
-  const tlStages = (task: FullTask): TLStage[] => {
+  const tlStages = (task: FullTask, hasReviewed: boolean): TLStage[] => {
     const s = task.status;
     const isDone = (stages: string[]) => stages.includes(s);
+    
+    if (task.is_service_swap) {
+      return [
+        {
+          label: "Open",
+          date: fmtDate(task.created_at),
+          done: isDone(["assigned", "in_progress", "pending_client_review", "swap_in_progress", "pending_swap_review", "completed"]),
+          current: s === "open" || s === "draft",
+        },
+        {
+          label: "Applicant Works",
+          date: undefined,
+          done: isDone(["pending_client_review", "swap_in_progress", "pending_swap_review", "completed"]),
+          current: s === "assigned" || s === "in_progress",
+        },
+        {
+          label: "App. Review",
+          date: undefined,
+          done: isDone(["swap_in_progress", "pending_swap_review", "completed"]),
+          current: s === "pending_client_review",
+        },
+        {
+          label: "Provider Works",
+          date: undefined,
+          done: isDone(["pending_swap_review", "completed"]),
+          current: s === "swap_in_progress",
+        },
+        {
+          label: "Prov. Review",
+          date: undefined,
+          done: s === "completed" && hasReviewed,
+          current: s === "pending_swap_review" || (s === "completed" && !hasReviewed),
+        },
+        {
+          label: "Completed",
+          date: (s === "completed" && hasReviewed) ? fmtDate(task.completed_at) : undefined,
+          done: s === "completed" && hasReviewed,
+          current: false,
+        },
+      ];
+    }
+
     return [
       {
         label: "Open",
         date: fmtDate(task.created_at),
-        done: isDone([
-          "assigned",
-          "in_progress",
-          "pending_client_review",
-          "completed",
-        ]),
+        done: isDone(["assigned", "in_progress", "pending_client_review", "completed"]),
         current: s === "open" || s === "draft",
       },
       {
@@ -6907,43 +7035,49 @@ function TaskWorkspace({
         current: s === "assigned" || s === "in_progress",
       },
       {
-        label: "Review",
+        label: "Reviews",
         date: undefined,
-        done: isDone(["completed"]),
-        current: s === "pending_client_review",
+        done: s === "completed" && hasReviewed,
+        current: s === "pending_client_review" || (s === "completed" && !hasReviewed),
       },
       {
         label: "Completed",
-        date: fmtDate(task.completed_at),
-        done: s === "completed",
+        date: (s === "completed" && hasReviewed) ? fmtDate(task.completed_at) : undefined,
+        done: s === "completed" && hasReviewed,
         current: false,
       },
     ];
   };
 
-  const badgeClass = (status: string) =>
-    ({
+  const badgeClass = (task: FullTask) => {
+    if (task.status === "draft") return "assigned";
+    return ({
       open: "open",
-      draft: "open",
       assigned: "assigned",
       in_progress: "in-progress",
       pending_client_review: "pending-review",
+      swap_in_progress: "in-progress",
+      pending_swap_review: "pending-review",
       completed: "completed",
       disputed: "disputed",
       cancelled: "disputed",
-    })[status] || "open";
+    })[task.status] || "open";
+  };
 
-  const badgeLabel = (status: string) =>
-    ({
+  const badgeLabel = (task: FullTask) => {
+    if (task.status === "draft") return "Pending Moderation";
+    return ({
       open: "Open",
-      draft: "Draft",
       assigned: "Ongoing",
       in_progress: "Ongoing",
       pending_client_review: "Pending Review",
+      swap_in_progress: "Swap Ongoing",
+      pending_swap_review: "Swap Review",
       completed: "Completed",
       disputed: "Disputed",
       cancelled: "Cancelled",
-    })[status] || status;
+    })[task.status] || task.status;
+  };
 
   const fmtReward = (task: FullTask) =>
     task.commission_amount
@@ -6989,15 +7123,19 @@ function TaskWorkspace({
       setUploadingTask(null);
       return;
     }
-    // Now call the RPC to move to pending_client_review
-    const { error: rpcErr } = await supabase.rpc("applicant_mark_done", {
-      target_task_id: taskId,
-    });
+    const task = [...posted, ...applied.map(a => a.task!)].find(t => t?.id === taskId);
+    const isSwapProvider = task?.status === "swap_in_progress";
+    
+    // Now call the RPC to move state
+    const { error: rpcErr } = await supabase.rpc(
+      isSwapProvider ? "provider_mark_swap_done" : "applicant_mark_done", 
+      { target_task_id: taskId }
+    );
     setUploadingTask(null);
     if (rpcErr) {
       setNotice(`Photo uploaded but status update failed: ${rpcErr.message}`);
     } else {
-      setNotice("Proof submitted! Waiting for the client to confirm.");
+      setNotice(isSwapProvider ? "Swap proof submitted! Waiting for applicant to confirm." : "Proof submitted! Waiting for the client to confirm.");
     }
     void load();
   };
@@ -7011,7 +7149,28 @@ function TaskWorkspace({
     if (error) {
       setNotice(error.message);
     } else {
-      setNotice("Job confirmed! Payment released and task completed.");
+      const task = [...posted, ...applied.map(a => a.task!)].find(t => t?.id === taskId);
+      if (task?.is_service_swap) {
+        setNotice("Applicant work confirmed! Please complete your swap service and upload proof.");
+      } else {
+        setNotice("Job confirmed! Payment released and task completed.");
+      }
+    }
+    void load();
+  };
+
+
+
+  const confirmSwapCompletion = async (taskId: string) => {
+    setConfirmingTask(taskId);
+    const { error } = await supabase.rpc("applicant_confirm_swap_completion", {
+      target_task_id: taskId,
+    });
+    setConfirmingTask(null);
+    if (error) {
+      setNotice(error.message);
+    } else {
+      setNotice("Swap confirmed! Task is fully completed.");
     }
     void load();
   };
@@ -7054,6 +7213,7 @@ function TaskWorkspace({
     const isOngoing =
       task.status === "assigned" || task.status === "in_progress";
     const notReviewed = isCompleted && !reviewedIds.includes(task.id);
+    const isFullyCompleted = isCompleted && fullyReviewedTaskIds.includes(task.id);
     const tfDelta = tfDeltas[task.id];
     return (
       <article className="task-lifecycle-card">
@@ -7074,12 +7234,12 @@ function TaskWorkspace({
               )}
             </div>
           </div>
-          <span className={`tlc-status-badge ${badgeClass(task.status)}`}>
-            {badgeLabel(task.status)}
+          <span className={`tlc-status-badge ${badgeClass(task)}`}>
+            {badgeLabel(task)}
           </span>
         </div>
         <div className="tlc-body">
-          <TaskTimeline stages={tlStages(task)} />
+          <TaskTimeline stages={tlStages(task, isFullyCompleted)} />
 
           {/* Ongoing: chat link */}
           {isOngoing && task.assigned_to && (
@@ -7092,7 +7252,7 @@ function TaskWorkspace({
                 <svg viewBox="0 0 24 24">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
-                Message provider
+                Message applicant
               </button>
               <span style={{ fontSize: 12, color: "#7a8daa" }}>
                 Waiting for the provider to submit proof of completion.
@@ -7109,7 +7269,7 @@ function TaskWorkspace({
                   {deliverables.slice(0, 4).map((d) => (
                     <div className="tlc-proof-thumb" key={d.id}>
                       {d.mime_type.startsWith("image/") && d.signedUrl ? (
-                        <img src={d.signedUrl} alt="Proof" />
+                        <img src={d.signedUrl} alt="Proof" onClick={() => setEnlargedImage(d.signedUrl || null)} style={{ cursor: "zoom-in" }} />
                       ) : (
                         <span
                           style={{
@@ -7145,7 +7305,7 @@ function TaskWorkspace({
                   <svg viewBox="0 0 24 24">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
-                  Message provider
+                  Message applicant
                 </button>
                 <button
                   type="button"
@@ -7161,8 +7321,100 @@ function TaskWorkspace({
             </div>
           )}
 
+          {/* Swap In Progress: Poster must upload proof */}
+          {task.status === "swap_in_progress" && (
+            <div className="tlc-proof-section">
+              <div className="tlc-proof-label">Submit proof for your swap service</div>
+              {deliverables.length > 0 && (
+                <div className="tlc-proof-grid">
+                  {deliverables.map((d) => (
+                    <div className="tlc-proof-thumb" key={d.id}>
+                      {d.mime_type.startsWith("image/") && d.signedUrl ? (
+                        <img src={d.signedUrl} alt="Proof" onClick={() => setEnlargedImage(d.signedUrl || null)} style={{ cursor: "zoom-in" }} />
+                      ) : (
+                        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#7a8daa", fontSize: 11 }}>FILE</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="tlc-actions">
+                <button
+                  type="button"
+                  className="tlc-camera-btn"
+                  disabled={uploadingTask === task.id}
+                  onClick={() => setCameraTask(task.id)}
+                >
+                  <svg viewBox="0 0 24 24">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                  {uploadingTask === task.id
+                    ? "Uploading proof…"
+                    : deliverables.some(d => d.submitted_by === session.user.id)
+                      ? "Add another photo"
+                      : "Take proof photo"}
+                </button>
+                {deliverables.some(d => d.submitted_by === session.user.id) && (
+                  <button
+                    type="button"
+                    className="tlc-confirm-btn"
+                    disabled={uploadingTask === task.id}
+                    onClick={() => {
+                      void supabase.rpc("provider_mark_swap_done", { target_task_id: task.id }).then(({ error }) => {
+                        if (error) setNotice(error.message);
+                        else {
+                          setNotice("Marked swap as done! Waiting for applicant confirmation.");
+                          void load();
+                        }
+                      });
+                    }}
+                  >
+                    ✓ Mark My Swap as Done
+                  </button>
+                )}
+                <button type="button" className="tlc-chat-link" onClick={() => onOpenChat(task.id)}>
+                  <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                  Message applicant
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Pending Swap Review: waiting for applicant to confirm */}
+          {task.status === "pending_swap_review" && (
+            <div className="tlc-waiting">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <div>
+                <strong style={{ display: "block", marginBottom: 3 }}>
+                  Waiting for applicant confirmation
+                </strong>
+                Your proof was submitted. The applicant will review it and confirm the task is complete.
+              </div>
+            </div>
+          )}
+
+          {/* Completed: waiting for other party to review */}
+          {isCompleted && !notReviewed && !isFullyCompleted && (
+            <div className="tlc-waiting">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <div>
+                <strong style={{ display: "block", marginBottom: 3 }}>
+                  Waiting for other party's review
+                </strong>
+                You have submitted your review. The transaction will be fully complete once the other party submits theirs.
+              </div>
+            </div>
+          )}
+
           {/* Completed: payment receipt */}
-          {isCompleted && (
+          {isCompleted && isFullyCompleted && (
             <PaymentReceiptCard task={{ ...task, title: task.title }} />
           )}
 
@@ -7243,6 +7495,7 @@ function TaskWorkspace({
     const isInProgress = task.status === "in_progress";
     const isAssigned = task.status === "assigned";
     const notReviewed = isCompleted && !reviewedIds.includes(task.id);
+    const isFullyCompleted = isCompleted && fullyReviewedTaskIds.includes(task.id);
     const tfDelta = tfDeltas[task.id];
     return (
       <article className="task-lifecycle-card">
@@ -7264,8 +7517,8 @@ function TaskWorkspace({
             </div>
           </div>
           {isAccepted ? (
-            <span className={`tlc-status-badge ${badgeClass(task.status)}`}>
-              {badgeLabel(task.status)}
+            <span className={`tlc-status-badge ${badgeClass(task)}`}>
+              {badgeLabel(task)}
             </span>
           ) : (
             <span
@@ -7276,7 +7529,7 @@ function TaskWorkspace({
           )}
         </div>
         <div className="tlc-body">
-          {isAccepted && <TaskTimeline stages={tlStages(task)} />}
+          {isAccepted && <TaskTimeline stages={tlStages(task, isFullyCompleted)} />}
 
           {/* Ready to start */}
           {isAccepted && isAssigned && (
@@ -7310,7 +7563,7 @@ function TaskWorkspace({
                   {deliverables.slice(0, 4).map((d) => (
                     <div className="tlc-proof-thumb" key={d.id}>
                       {d.mime_type.startsWith("image/") && d.signedUrl ? (
-                        <img src={d.signedUrl} alt="Proof" />
+                        <img src={d.signedUrl} alt="Proof" onClick={() => setEnlargedImage(d.signedUrl || null)} style={{ cursor: "zoom-in" }} />
                       ) : (
                         <span
                           style={{
@@ -7403,8 +7656,85 @@ function TaskWorkspace({
             </div>
           )}
 
+          {/* Swap In Progress: waiting for provider to upload proof */}
+          {isAccepted && task.status === "swap_in_progress" && (
+            <div className="tlc-waiting">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <div>
+                <strong style={{ display: "block", marginBottom: 3 }}>
+                  Waiting for client to complete swap
+                </strong>
+                Your work was approved! The client is now completing their swap service and will submit proof here.
+              </div>
+            </div>
+          )}
+
+          {/* Pending Swap Review: Applicant reviews provider's proof */}
+          {isAccepted && task.status === "pending_swap_review" && (
+            <div className="tlc-proof-section">
+              <div className="tlc-proof-label">Review Client's Swap Proof</div>
+              {deliverables.length > 0 ? (
+                <div className="tlc-proof-grid">
+                  {deliverables.map((d) => (
+                    <div className="tlc-proof-thumb" key={d.id}>
+                      {d.mime_type.startsWith("image/") && d.signedUrl ? (
+                        <img src={d.signedUrl} alt="Proof" onClick={() => setEnlargedImage(d.signedUrl || null)} style={{ cursor: "zoom-in" }} />
+                      ) : (
+                        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#7a8daa", fontSize: 11 }}>FILE</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="tlc-proof-empty">
+                  <span>📷</span>
+                  <span>The client marked this as done but no proof photo was linked yet.</span>
+                </div>
+              )}
+              <div className="tlc-actions">
+                <button
+                  type="button"
+                  className="tlc-chat-link"
+                  onClick={() => onOpenChat(task.id)}
+                >
+                  <svg viewBox="0 0 24 24">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  Message client
+                </button>
+                <button
+                  type="button"
+                  className="tlc-confirm-btn"
+                  disabled={confirmingTask === task.id}
+                  onClick={() => void confirmSwapCompletion(task.id)}
+                >
+                  {confirmingTask === task.id ? "Confirming…" : "✓ Confirm Swap Done"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Completed: waiting for other party to review */}
+          {isAccepted && isCompleted && !notReviewed && !isFullyCompleted && (
+            <div className="tlc-waiting">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <div>
+                <strong style={{ display: "block", marginBottom: 3 }}>
+                  Waiting for other party's review
+                </strong>
+                You have submitted your review. The transaction will be fully complete once the other party submits theirs.
+              </div>
+            </div>
+          )}
+
           {/* Completed: show payment card */}
-          {isAccepted && isCompleted && (
+          {isAccepted && isCompleted && isFullyCompleted && (
             <PaymentReceiptCard task={{ ...task, title: task.title }} />
           )}
 
@@ -7518,9 +7848,8 @@ function TaskWorkspace({
         </section>
       ) : tab === "posted" ? (
         <section className="task-work-list">
-          {posted.filter((t) => t.status !== "draft").length ? (
+          {posted.length ? (
             posted
-              .filter((t) => t.status !== "draft")
               .map((task) => <ClientTaskCard key={task.id} task={task} />)
           ) : (
             <div className="task-empty-state">
@@ -7556,6 +7885,13 @@ function TaskWorkspace({
       )}
 
       {cameraModal}
+      
+      {enlargedImage && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,0.8)", backdropFilter: "blur(5px)" }} onClick={() => setEnlargedImage(null)}>
+          <img src={enlargedImage} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "10px" }} />
+          <button style={{ position: "absolute", top: "20px", right: "20px", background: "rgba(255,255,255,0.2)", color: "#fff", border: "none", width: "40px", height: "40px", borderRadius: "50%", fontSize: "24px", cursor: "pointer" }}>×</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -7586,6 +7922,7 @@ function NotificationBell({ userId }: { userId: string }) {
     void load();
     const timer = window.setInterval(() => void load(), 20000);
     return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const unread = items.filter((item) => !item.is_read).length;
@@ -8051,6 +8388,7 @@ function TaskApplicationInboxV2({ session }: { session: Session }) {
   };
   useEffect(() => {
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user.id]);
   const accept = async (application: InboxApplication) => {
     const { error } = await supabase.rpc("accept_application", {
@@ -8930,38 +9268,46 @@ function PostTaskReal({
           </label>
         )}
         <div className="field-group">
-          <span className="field-label">Payment method</span>
+          <span className="field-label">Payment type</span>
           <div className="segmented">
             <button
               type="button"
-              className={`seg ${paymentType === "cash" ? "active" : ""}`}
-              onClick={() => setPaymentType("cash")}
+              className={`seg ${!serviceSwap ? "active" : ""}`}
+              onClick={() => setServiceSwap(false)}
             >
-              Cash (meet up)
+              Money payment
             </button>
             <button
               type="button"
-              className={`seg ${paymentType === "gcash" ? "active" : ""}`}
-              onClick={() => setPaymentType("gcash")}
+              className={`seg ${serviceSwap ? "active" : ""}`}
+              onClick={() => setServiceSwap(true)}
             >
-              GCash (escrow)
+              Service swap
             </button>
           </div>
         </div>
-        <label className="service-swap-control">
-          <input
-            type="checkbox"
-            checked={serviceSwap}
-            onChange={(event) => setServiceSwap(event.target.checked)}
-          />
-          <span>
-            <strong>Offer a service swap instead</strong>
-            <small>
-              Offer a service instead of cash or GCash. Add its estimated PHP
-              value and description.
-            </small>
-          </span>
-        </label>
+
+        {!serviceSwap && (
+          <div className="field-group">
+            <span className="field-label">Money payment method</span>
+            <div className="segmented">
+              <button
+                type="button"
+                className={`seg ${paymentType === "cash" ? "active" : ""}`}
+                onClick={() => setPaymentType("cash")}
+              >
+                Cash (meet up)
+              </button>
+              <button
+                type="button"
+                className={`seg ${paymentType === "gcash" ? "active" : ""}`}
+                onClick={() => setPaymentType("gcash")}
+              >
+                GCash (online)
+              </button>
+            </div>
+          </div>
+        )}
         {serviceSwap && (
           <label className="field-group">
             <span className="field-label">Service swap offer</span>

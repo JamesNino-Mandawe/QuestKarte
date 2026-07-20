@@ -1,10 +1,11 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "./lib/supabase";
 
 type AuthMode = "signin" | "signup" | "otp" | "forgot";
 
-export default function AuthScreen({ onExplore, onStaffPreview }: { onExplore: () => void; onStaffPreview: (role: "moderator" | "admin") => void }) {
+export default function AuthScreen({ onExplore }: { onExplore: () => void }) {
   const [mode, setMode] = useState<AuthMode>("signin");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -63,7 +64,7 @@ export default function AuthScreen({ onExplore, onStaffPreview }: { onExplore: (
       <div className="auth-compass" aria-hidden="true"><i /><b /><em /></div>
       <section className="auth-card">
         <div className="auth-brand">
-          <img src="/questkarte-logo.png" alt="QuestKarte emblem" />
+          <img src="/questkarte-logo.svg" alt="QuestKarte emblem" />
           <div><span>QuestKarte</span><small>Tasks · Trust · Territory</small></div>
         </div>
         
@@ -138,24 +139,19 @@ export default function AuthScreen({ onExplore, onStaffPreview }: { onExplore: (
         <button className="auth-demo" type="button" onClick={onExplore}>Explore as guest</button>
         <p className="auth-guest-note">Guests can browse the marketplace. Verified members can post and apply.</p>
         
-        <div className="staff-preview">
-          <span>Staff UI previews</span>
-          <button type="button" onClick={() => onStaffPreview("moderator")}>Moderator console</button>
-          <button type="button" onClick={() => onStaffPreview("admin")}>Admin command center</button>
-        </div>
-        
-        {termsOpen && (
-          <div className="terms-dialog" role="dialog" aria-modal="true" aria-labelledby="terms-title">
-            <div>
-              <button className="terms-close" type="button" onClick={() => setTermsOpen(false)} aria-label="Close terms">×</button>
+        {termsOpen && createPortal(
+          <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'grid', placeItems: 'center', padding: '24px', background: 'rgba(2,5,16,0.85)', backdropFilter: 'blur(8px)' }} role="presentation">
+            <div style={{ position: 'relative', width: 'min(100%, 560px)', maxHeight: '90vh', overflow: 'auto', border: '1px solid rgba(237,196,88,.35)', borderRadius: '20px', padding: '28px', background: '#101a39', boxShadow: '0 30px 80px rgba(0,0,0,.48)', color: '#edf2ff' }} role="dialog" aria-modal="true" aria-labelledby="terms-title">
+              <button style={{ position: 'absolute', right: '14px', top: '12px', border: 0, background: 'transparent', color: '#edf2ff', fontSize: '26px', cursor: 'pointer' }} type="button" onClick={() => setTermsOpen(false)} aria-label="Close terms">×</button>
               <p className="eyebrow">QuestKarte terms</p>
-              <h2 id="terms-title">Use QuestKarte safely and honestly.</h2>
-              <p>Members must provide accurate information, treat others respectfully, avoid unlawful or unsafe tasks, and use the platform only for legitimate service requests and applications.</p>
-              <p>Verification documents and identity evidence are private. They are reviewed only by authorized QuestKarte staff and are never shown on public profiles.</p>
-              <p>Task, review, trust, and moderation decisions are recorded to protect marketplace safety. Serious violations can result in restrictions or account suspension.</p>
-              <button type="button" className="auth-submit" onClick={() => { setTermsAccepted(true); setTermsOpen(false); }}>I understand</button>
+              <h2 id="terms-title" style={{ margin: '6px 0 13px', fontSize: '25px', fontFamily: '"Space Grotesk", sans-serif' }}>Use QuestKarte safely and honestly.</h2>
+              <p style={{ color: '#c2cce1', lineHeight: 1.65, fontSize: '13px', marginBottom: '13px' }}>Members must provide accurate information, treat others respectfully, avoid unlawful or unsafe tasks, and use the platform only for legitimate service requests and applications.</p>
+              <p style={{ color: '#c2cce1', lineHeight: 1.65, fontSize: '13px', marginBottom: '13px' }}>Verification documents and identity evidence are private. They are reviewed only by authorized QuestKarte staff and are never shown on public profiles.</p>
+              <p style={{ color: '#c2cce1', lineHeight: 1.65, fontSize: '13px', marginBottom: '13px' }}>Task, review, trust, and moderation decisions are recorded to protect marketplace safety. Serious violations can result in restrictions or account suspension.</p>
+              <button type="button" className="auth-submit" style={{ width: '100%', marginTop: '8px' }} onClick={() => { setTermsAccepted(true); setTermsOpen(false); }}>I understand</button>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
         
         <p className="auth-foot">
