@@ -1850,13 +1850,25 @@ function MarketplaceFeedLive({
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [appliedIds, setAppliedIds] = useState<string[]>([]);
+    const [savedIds, setSavedIds] = useState<string[]>([]);
   const [applicationNotice, setApplicationNotice] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [applicationTask, setApplicationTask] =
     useState<SharedMarketplaceTask | null>(null);
   const [profilePreviewId, setProfilePreviewId] = useState<string | null>(null);
 
-  const load = async (showLoading = false) => {
+  const toggleSave = async (taskId: string) => {
+      if (!currentUserId) { setErrorMessage("Please sign in to save tasks"); return; }
+      const isSaved = savedIds.includes(taskId);
+      if (isSaved) {
+        setSavedIds(prev => prev.filter(id => id !== taskId));
+        await supabase.from('saved_tasks').delete().eq('user_id', currentUserId).eq('task_id', taskId);
+      } else {
+        setSavedIds(prev => [...prev, taskId]);
+        await supabase.from('saved_tasks').insert({ user_id: currentUserId, task_id: taskId });
+      }
+    };
+    const load = async (showLoading = false) => {
     if (showLoading) setLoading(true);
     const { data: taskData, error: taskError } = await supabase
       .from("tasks")
@@ -1879,9 +1891,11 @@ function MarketplaceFeedLive({
         .select("task_id")
         .eq("applicant_id", authData.user.id);
       setAppliedIds(
-        (applications || []).map((application) => application.task_id),
-      );
-    }
+          (applications || []).map((application) => application.task_id),
+        );
+        const { data: savedTasks } = await supabase.from('saved_tasks').select('task_id').eq('user_id', authData.user.id);
+        setSavedIds((savedTasks || []).map(s => s.task_id));
+      }
     const memberIds = [...new Set(rows.map((task) => task.posted_by))];
       const autoId = localStorage.getItem('questkarte-auto-apply');
       if (autoId) {
@@ -2071,12 +2085,18 @@ function MarketplaceFeedLive({
           </div>
         ) : visibleTasks.length ? (
           <div className="real-task-list">
-            {visibleTasks.map((task) => (
+            {[...visibleTasks].sort((a, b) => {
+              const aSaved = savedIds.includes(a.id);
+              const bSaved = savedIds.includes(b.id);
+              if (aSaved && !bSaved) return -1;
+              if (!aSaved && bSaved) return 1;
+              return 0;
+            }).map((task) => (
               <TaskCard
                 key={task.id}
                 quest={toQuest(task)}
                 isOwner={task.posted_by === currentUserId}
-                applied={appliedIds.includes(task.id)}
+                applied={appliedIds.includes(task.id)} saved={savedIds.includes(task.id)} onSave={() => toggleSave(task.id)}
                 onProfileClick={() => setProfilePreviewId(task.posted_by)}
                 onApply={
                   task.posted_by === currentUserId
