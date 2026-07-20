@@ -2856,7 +2856,10 @@ function FreshDiscovery({
             </button>
           </div>
           {radiusControl()}
-          <TaskMap position={position} radius={radius} tasks={visibleTasks} />
+          <TaskMap position={position} radius={radius} tasks={visibleTasks as unknown as TaskMapPin[]} onApply={(id) => {
+              const fullTask = visibleTasks.find((t: any) => t.id === id);
+              if (fullTask) setApplicationTask(fullTask as any);
+            }} />
         </section>
         <section className="panel fresh-trust">
           <div className="snapshot-heading">
@@ -2942,11 +2945,15 @@ function FreshDiscovery({
               {radiusControl(true)}
             </div>
             <TaskMap
-              position={position}
-              radius={radius}
-              tasks={visibleTasks}
-              full
-            />
+                position={position}
+                radius={radius}
+                tasks={visibleTasks as unknown as TaskMapPin[]}
+                full
+                onApply={(id) => {
+                  const fullTask = visibleTasks.find((t: any) => t.id === id);
+                  if (fullTask) setApplicationTask(fullTask as any);
+                }}
+              />
             <p className="map-caption">
               Category markers: tutoring 📚 · cleaning 🧹 · delivery 🛵 · design
               ✦ · other ⚑. {visibleTasks.length} approved task pin
@@ -2988,18 +2995,18 @@ function taskMarker(task: TaskMapPin) {
             ? ["✦", "design"]
             : ["⚑", "general"];
   return divIcon({
-    className: "",
-    html: `<span class="task-map-marker ${category}" title="${task.title.replace(/"/g, "&quot;")}">${symbol}</span>`,
+    className: "pulsing-marker-wrapper",
+      html: `<span class="task-map-marker ${category} elite-pulse" title="${task.title.replace(/"/g, "&quot;")}">${symbol}</span>`,
     iconSize: [36, 36],
     iconAnchor: [18, 18],
   });
 }
-function MapTaskPreview({ task }: { task: TaskMapPin }) {
+function MapTaskPreview({ task, onApply }: { task: TaskMapPin, onApply?: () => void }) {
   const reward = task.is_service_swap
     ? task.swap_details || "Service swap"
     : `${task.currency === "PHP" ? "PHP " : ""}${Number(task.commission_amount || 0).toLocaleString()}`;
   return (
-    <article className="map-task-preview">
+    <article className="map-task-preview elite-glass">
       <div className="map-task-preview-media">
         {task.images?.[0] ? (
           <img src={task.images[0]} alt="" />
@@ -3021,21 +3028,14 @@ function MapTaskPreview({ task }: { task: TaskMapPin }) {
           Posted by {task.posterName || "QuestKarte member"} · Trust Factor{" "}
           {task.posterTrust || 0}
         </small>
-      </div>
-    </article>
+          {onApply && (
+            <button onClick={onApply} className="btn primary" style={{ width: '100%', marginTop: '12px', background: 'linear-gradient(135deg, #1C9286, #159b78)', border: 'none', boxShadow: '0 4px 15px rgba(28,146,134,0.4)', borderRadius: '12px' }}>Explore Task</button>
+          )}
+        </div>
+      </article>
   );
 }
-function TaskMap({
-  position,
-  radius,
-  tasks,
-  full = false,
-}: {
-  position: [number, number] | null;
-  radius: number;
-  tasks: TaskMapPin[];
-  full?: boolean;
-}) {
+function TaskMap({ position, radius, tasks, full = false, onApply }: { position: [number, number] | null; radius: number; tasks: TaskMapPin[]; full?: boolean; onApply?: (taskId: string) => void; }) {
   return (
     <div className={full ? "quest-map full" : "quest-map"}>
       <MapContainer
@@ -3045,7 +3045,7 @@ function TaskMap({
       >
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         <MapPanTo position={position} />
         {position && (
@@ -3079,7 +3079,7 @@ function TaskMap({
             icon={taskMarker(task)}
           >
             <Popup className="quest-map-task-popup">
-              <MapTaskPreview task={task} />
+              <MapTaskPreview task={task} onApply={onApply ? () => onApply(task.id) : undefined} />
             </Popup>
           </Marker>
         ))}
@@ -4780,7 +4780,7 @@ function DiscoverySide() {
           >
             <TileLayer
               attribution="&copy; OpenStreetMap contributors"
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             />
             <MapPanTo position={position} />
             {position && (
@@ -5345,13 +5345,19 @@ function Chat({
         </div>
         <div className="thread-body">
           {messages.map((message, index) => (
-            <div
-              key={`${message}-${index}`}
-              className={`msg ${index % 2 ? "in" : "out"}`}
-            >
-              {message}
-            </div>
-          ))}
+              <div key={`${message}-${index}`} style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                {index === 0 && (
+                  <div className="msg-system">
+                    🛡️ Secure Chat: Always keep communication and payments within QuestKarte.
+                  </div>
+                )}
+                <div
+                  className={`msg-wrapper ${index % 2 ? "in" : "out"}`}
+                >
+                  <div className="msg-bubble">{message}</div>
+                </div>
+              </div>
+            ))}
           <div className="ward-card">
             <div className="ward-ft">⚠ QuestKarte safety shield</div>
             <div className="ward-blur">
