@@ -1025,9 +1025,7 @@ function App() {
     );
   if (!session && !demoMode)
     return (
-      <AuthScreen
-        onExplore={() => setDemoMode(true)}
-      />
+      <AuthScreen onExplore={() => setDemoMode(true)} onBack={() => setShowLanding(true)} />
     );
   if (session && passwordRecovery)
     return <PasswordRecovery onDone={() => setPasswordRecovery(false)} />;

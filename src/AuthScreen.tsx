@@ -5,7 +5,7 @@ import { supabase } from "./lib/supabase";
 
 type AuthMode = "signin" | "signup" | "otp" | "forgot";
 
-export default function AuthScreen({ onExplore }: { onExplore: () => void }) {
+export default function AuthScreen({ onExplore, onBack }: { onExplore: () => void, onBack: () => void }) {
   const [mode, setMode] = useState<AuthMode>("signin");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -61,6 +61,9 @@ export default function AuthScreen({ onExplore }: { onExplore: () => void }) {
 
   return (
     <main className="auth-page">
+      <button className="back-to-website" onClick={onBack} style={{ position: 'absolute', top: '30px', left: '30px', background: 'transparent', border: '1px solid var(--stroke)', color: 'var(--muted)', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', zIndex: 10 }}>
+        <span>←</span> Return to website
+      </button>
       <div className="auth-compass" aria-hidden="true"><i /><b /><em /></div>
       <section className="auth-card">
         <div className="auth-brand">
