@@ -3623,7 +3623,8 @@ function FreshTasks({
           "id,status,created_at,task:tasks(id,title,status,moderation_state,assigned_to,created_at,commission_amount,is_service_swap,deadline_at,location_label,payment_type,payment_status,category:categories(name))",
         )
         .eq("applicant_id", session.user.id)
-        .order("created_at", { ascending: false }),
+          .neq("status", "rejected")
+          .order("created_at", { ascending: false }),
     ]);
     setPosted((own.data || []) as unknown as typeof posted);
     setApplied((mine.data || []) as unknown as typeof applied);
@@ -7026,7 +7027,8 @@ function TaskWorkspace({
           "id,status,created_at,task:tasks(id,title,status,moderation_state,assigned_to,posted_by,created_at,deadline_at,completed_at,commission_amount,currency,payment_type,payment_status,category_id,is_service_swap,swap_details)",
         )
         .eq("applicant_id", session.user.id)
-        .order("created_at", { ascending: false }),
+          .neq("status", "rejected")
+          .order("created_at", { ascending: false }),
       supabase
         .from("reviews")
         .select("task_id, reviewer_id")
