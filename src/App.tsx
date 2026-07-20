@@ -8,7 +8,7 @@ import {
   Marker,
   Popup,
   TileLayer,
-  useMap,
+  useMap, useMapEvents,
 } from "react-leaflet";
 import { divIcon } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -3651,13 +3651,13 @@ function FreshTasks({
     const [own, mine] = await Promise.all([
       supabase
         .from("tasks")
-        .select("id,title,status,moderation_state,assigned_to,created_at,commission_amount,is_service_swap,deadline_at,location_label,payment_type,payment_status,category:categories(name)")
+        .select("id,title,status,moderation_state,assigned_to,created_at,commission_amount,is_service_swap,deadline_at,location_label,payment_type,payment_status,category:categories(name),hidden_by_poster,hidden_by_assignee")
         .eq("posted_by", session.user.id)
         .order("created_at", { ascending: false }),
       supabase
         .from("applications")
         .select(
-          "id,status,created_at,task:tasks(id,title,status,moderation_state,assigned_to,created_at,commission_amount,is_service_swap,deadline_at,location_label,payment_type,payment_status,category:categories(name))",
+          "id,status,created_at,task:tasks(id,title,status,moderation_state,assigned_to,created_at,commission_amount,is_service_swap,deadline_at,location_label,payment_type,payment_status,category:categories(name),hidden_by_poster,hidden_by_assignee)",
         )
         .eq("applicant_id", session.user.id)
           .neq("status", "rejected")
@@ -3710,7 +3710,7 @@ function FreshTasks({
         </section>
       ) : entries.length ? (
         <section className="task-work-list">
-          {tab === "posted" ? posted.filter(task => localStorage.getItem('dismissed-task-' + task.id) !== 'true').map((task) => (
+          {tab === "posted" ? posted.filter(task => !task.hidden_by_poster).map((task) => (
                 <TaskLifecycleCard
                   key={task.id}
                   task={task}
@@ -3719,7 +3719,7 @@ function FreshTasks({
                   reloadTasks={() => void load()}
                 />
               ))
-            : applied.filter(application => application.task && localStorage.getItem('dismissed-task-' + application.task.id) !== 'true').map(
+            : applied.filter(application => application.task && !application.task.hidden_by_assignee).map(
                   (application) =>
                     application.task && (
                     <TaskLifecycleCard
@@ -3795,6 +3795,7 @@ function FreshChatReal({
     body: string;
     attachment_url: string | null;
     attachment_type: string | null;
+    attachment_name: string | null;
     created_at: string;
   };
 
@@ -3886,7 +3887,7 @@ function FreshChatReal({
   const loadMessages = async (convId: string) => {
     const { data, error } = await supabase
       .from("messages")
-      .select("id,sender_id,body,attachment_url,attachment_type,created_at")
+      .select("id,sender_id,body,attachment_url,attachment_type,attachment_name,created_at")
       .eq("conversation_id", convId)
       .eq("hidden_by_moderation", false)
       .order("created_at");
@@ -4446,6 +4447,7 @@ function FreshAccount({
   const [bio, setBio] = useState(profile?.bio || "");
   const [city, setCity] = useState(profile?.city || "Cebu City");
   const [skills, setSkills] = useState<string[]>(profile?.skills || []);
+  const [showTrustHistory, setShowTrustHistory] = useState(false);
   const [avatar, setAvatar] = useState<string | null>(
     profile?.avatar_url || null,
   );
@@ -9230,6 +9232,15 @@ function LegacyPostTaskRealV2({
       </aside>
     </div>
   );
+}
+
+function LocationSelector({ onChange }: { onChange: (c: { latitude: number, longitude: number }) => void }) {
+  useMapEvents({
+    click(e) {
+      onChange({ latitude: e.latlng.lat, longitude: e.latlng.lng });
+    }
+  });
+  return null;
 }
 
 function PostTaskReal({
