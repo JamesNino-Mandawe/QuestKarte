@@ -6996,7 +6996,64 @@ function PaymentReceiptCard({
 }
 
 /* ─── Full task lifecycle workspace ───────────────────────────────── */
+
+function TaskReviewForm({
+  task,
+  isClient,
+  tfDelta,
+  submitReview,
+}: {
+  task: any;
+  isClient: boolean;
+  tfDelta?: number;
+  submitReview: (task: any, isClient: boolean, rating: number, comment: string) => Promise<void>;
+}) {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+
+  return (
+    <div className="tlc-review-zone">
+      <h4>Rate your {isClient ? "client" : "provider"}</h4>
+      <div className="review-stars-row">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            type="button"
+            key={star}
+            className={rating >= star ? "selected" : ""}
+            onClick={() => setRating(star)}
+            aria-label={`${star} star`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={comment}
+        maxLength={1500}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder={`Optional written ${isClient ? 'feedback' : 'review'} visible on the ${isClient ? "client's" : "provider's"} profile.`}
+      />
+      <button
+        type="button"
+        className="btn primary"
+        onClick={() => void submitReview(task, isClient, rating, comment)}
+      >
+        Submit review
+      </button>
+      {tfDelta !== undefined && (
+        <div className={`tf-delta-toast ${tfDelta < 0 ? "negative" : ""}`}>
+          {tfDelta >= 0 ? `+${tfDelta}` : tfDelta} Trust Factor{" "}
+          {tfDelta >= 0
+            ? `earned by ${isClient ? "client" : "provider"}`
+            : `deducted from ${isClient ? "client" : "provider"}`}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TaskWorkspace({
+
   session,
   onGoPost,
   onOpenChat = () => {},
@@ -7064,9 +7121,7 @@ function TaskWorkspace({
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [uploadingTask, setUploadingTask] = useState<string | null>(null);
   const [confirmingTask, setConfirmingTask] = useState<string | null>(null);
-  const [ratings, setRatings] = useState<Record<string, number>>({});
-  const [comments, setComments] = useState<Record<string, string>>({});
-  const [reviewedIds, setReviewedIds] = useState<string[]>([]);
+      const [reviewedIds, setReviewedIds] = useState<string[]>([]);
   const [fullyReviewedTaskIds, setFullyReviewedTaskIds] = useState<string[]>([]);
   const [tfDeltas, setTfDeltas] = useState<Record<string, number>>({});
 
@@ -7626,51 +7681,7 @@ function TaskWorkspace({
 
           {/* Completed: leave a review */}
           {notReviewed && (
-            <div className="tlc-review-zone">
-              <h4>Rate your provider</h4>
-              <div className="review-stars-row">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    type="button"
-                    key={star}
-                    className={
-                      (ratings[task.id] || 0) >= star ? "selected" : ""
-                    }
-                    onClick={() =>
-                      setRatings((p) => ({ ...p, [task.id]: star }))
-                    }
-                    aria-label={`${star} star`}
-                  >
-                    ★
-                  </button>
-                ))}
-              </div>
-              <textarea
-                value={comments[task.id] || ""}
-                maxLength={1500}
-                onChange={(e) =>
-                  setComments((p) => ({ ...p, [task.id]: e.target.value }))
-                }
-                placeholder="Optional written review that will be visible on the provider's profile."
-              />
-              <button
-                type="button"
-                className="btn primary"
-                onClick={() => void submitReview(task, true)}
-              >
-                Submit review
-              </button>
-              {tfDelta !== undefined && (
-                <div
-                  className={`tf-delta-toast ${tfDelta < 0 ? "negative" : ""}`}
-                >
-                  {tfDelta >= 0 ? `+${tfDelta}` : tfDelta} Trust Factor{" "}
-                  {tfDelta >= 0
-                    ? "earned by provider"
-                    : "deducted from provider"}
-                </div>
-              )}
-            </div>
+            <TaskReviewForm task={task} isClient={false} tfDelta={tfDelta} submitReview={submitReview as any} />
           )}
         </div>
       </article>
@@ -7963,49 +7974,7 @@ function TaskWorkspace({
 
           {/* Completed: leave a review */}
           {isAccepted && notReviewed && (
-            <div className="tlc-review-zone">
-              <h4>Rate your client</h4>
-              <div className="review-stars-row">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    type="button"
-                    key={star}
-                    className={
-                      (ratings[task.id] || 0) >= star ? "selected" : ""
-                    }
-                    onClick={() =>
-                      setRatings((p) => ({ ...p, [task.id]: star }))
-                    }
-                    aria-label={`${star} star`}
-                  >
-                    ★
-                  </button>
-                ))}
-              </div>
-              <textarea
-                value={comments[task.id] || ""}
-                maxLength={1500}
-                onChange={(e) =>
-                  setComments((p) => ({ ...p, [task.id]: e.target.value }))
-                }
-                placeholder="Optional written feedback visible on the client's profile."
-              />
-              <button
-                type="button"
-                className="btn primary"
-                onClick={() => void submitReview(task, false)}
-              >
-                Submit review
-              </button>
-              {tfDelta !== undefined && (
-                <div
-                  className={`tf-delta-toast ${tfDelta < 0 ? "negative" : ""}`}
-                >
-                  {tfDelta >= 0 ? `+${tfDelta}` : tfDelta} Trust Factor{" "}
-                  {tfDelta >= 0 ? "earned by client" : "deducted from client"}
-                </div>
-              )}
-            </div>
+            <TaskReviewForm task={task} isClient={true} tfDelta={tfDelta} submitReview={submitReview as any} />
           )}
 
           {/* Not accepted yet */}
