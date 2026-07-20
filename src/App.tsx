@@ -632,10 +632,31 @@ function CameraCapture({
             Take photo
           </button>
         </div>
-      </section>
-    </div>
-  );
-}
+              {reportSuccess ? (
+                <div style={{ marginTop: 20, padding: 15, background: "rgba(70,214,163,0.1)", color: "#159b78", borderRadius: 10, fontSize: 13 }}>Report submitted successfully. Our safety team will review it.</div>
+              ) : isReporting ? (
+                <div style={{ marginTop: 20, padding: 15, background: "#f7f9fe", border: "1px solid #dce4f1", borderRadius: 10 }}>
+                  <h3 style={{ fontSize: 13, marginBottom: 8, color: "#a43f3f" }}>Report {name}</h3>
+                  <textarea value={reportReason} onChange={e => setReportReason(e.target.value)} placeholder="Please explain why you are reporting this member..." style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 8, border: "1px solid #cdd8ea", marginBottom: 10, fontSize: 13 }} />
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button className="btn" onClick={() => setIsReporting(false)}>Cancel</button>
+                    <button className="btn primary" style={{ background: "#a43f3f", color: "#fff" }} onClick={submitReport}>Submit Report</button>
+                  </div>
+                </div>
+              ) : (
+                <button className="btn" onClick={() => setIsReporting(true)} style={{ marginTop: 20, color: "#a43f3f", border: "1px solid #e5bbbb", background: "#fff7f7", width: "100%" }}>Report Member</button>
+              )}
+            </>
+          )}
+        </section>
+        {enlargedImage && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 99999, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(5px)" }} onClick={() => setEnlargedImage(null)}>
+            <img src={enlargedImage} alt="Enlarged view" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "12px", boxShadow: "0 20px 40px rgba(0,0,0,0.5)" }} />
+          </div>
+        )}
+      </div>
+    );
+  }
 
 function CameraInputBridge() {
   const [targetInput, setTargetInput] = useState<HTMLInputElement | null>(null);
@@ -2112,6 +2133,17 @@ function MemberProfileModal({
   >;
   const [member, setMember] = useState<PublicProfile | null>(null);
   const [notice, setNotice] = useState("");
+    const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+    const [isReporting, setIsReporting] = useState(false);
+    const [reportReason, setReportReason] = useState("");
+    const [reportSuccess, setReportSuccess] = useState(false);
+    const submitReport = async () => {
+      if (reportReason.length < 5) return setNotice("Reason must be at least 5 characters.");
+      setNotice("");
+      const { error } = await supabase.from("reports").insert({ reported_user_id: memberId, reason: reportReason });
+      if (error) setNotice(error.message);
+      else { setReportSuccess(true); setIsReporting(false); setReportReason(""); }
+    };
   useEffect(() => {
     void (async () => {
       const { data, error } = await supabase
@@ -2157,7 +2189,7 @@ function MemberProfileModal({
             <header className="member-profile-heading">
               <span className="avatar profile-large-avatar">
                 {member.avatar_url ? (
-                  <img src={member.avatar_url} alt="" />
+                  <img src={member.avatar_url} alt="" onClick={() => setEnlargedImage(member.avatar_url)} style={{ cursor: "zoom-in" }} />
                 ) : (
                   name.slice(0, 2).toUpperCase()
                 )}
@@ -5451,14 +5483,15 @@ function StaffDashboard({
 }
 
 type StaffTab =
-  | "overview"
-  | "members"
-  | "moderators"
-  | "categories"
-  | "audit"
-  | "task_review"
-  | "verification"
-  | "reports"
+    | "overview"
+    | "members"
+    | "moderators"
+    | "categories"
+    | "audit"
+    | "task_review"
+    | "verification"
+    | "reports"
+    | "disputes"
   | "disputes";
 type StaffTaskRecord = {
   id: string;
@@ -5556,8 +5589,8 @@ function StaffWorkspace({
   const [roles, setRoles] = useState<{ user_id: string; role: string }[]>([]);
   const [categories, setCategories] = useState<StaffCategory[]>([]);
   const [audit, setAudit] = useState<
-    { id: string; action: string; entity_type: string; created_at: string }[]
-  >([]);
+      { id: string; action: string; entity_type: string; created_at: string; profiles?: { full_name: string } }[]
+    >([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [evidencePreview, setEvidencePreview] = useState<{
@@ -5629,7 +5662,7 @@ function StaffWorkspace({
         .order("name"),
       supabase
         .from("admin_audit_logs")
-        .select("id,action,entity_type,created_at")
+          .select("id,action,entity_type,created_at,profiles(full_name)")
         .order("created_at", { ascending: false })
         .limit(15),
     ]);
@@ -5948,28 +5981,40 @@ function StaffWorkspace({
     if (tab === "overview")
       return (
         <div className="staff-overview">
-          <section className="staff-metrics">
-            <div className="staff-metric">
-              <span>Members</span>
-              <strong>{members.length}</strong>
-              <small>Registered accounts</small>
+            <div style={{ padding: 30, background: 'linear-gradient(135deg, #101d57, #1b2f7a)', color: 'white', borderRadius: 16, marginBottom: 24, boxShadow: '0 10px 30px rgba(16,29,87,0.2)' }}>
+              <h3 style={{ margin: 0, fontSize: 24, fontWeight: 'bold' }}>Platform Health Analytics</h3>
+              <p style={{ margin: 0, opacity: 0.8, marginTop: 8, fontSize: 15 }}>Real-time metrics and moderation queue status across the entire marketplace.</p>
             </div>
-            <div className="staff-metric">
-              <span>Pending tasks</span>
-              <strong>{tasks.length}</strong>
-              <small>Awaiting safety review</small>
-            </div>
-            <div className="staff-metric">
-              <span>Open reports</span>
-              <strong>{reports.length}</strong>
-              <small>Needs moderation</small>
-            </div>
-            <div className="staff-metric">
-              <span>Open disputes</span>
-              <strong>{disputes.length}</strong>
-              <small>Requires a decision</small>
-            </div>
-          </section>
+            
+            <section className="staff-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20, marginBottom: 40 }}>
+              <div className="staff-metric" style={{ background: '#fff', padding: 24, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', border: '1px solid #f0f3f8' }}>
+                <span style={{ color: '#52617f', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 12, letterSpacing: 1 }}>Total Members</span>
+                <strong style={{ fontSize: 36, display: 'block', margin: '12px 0', color: '#101d57' }}>{members.length}</strong>
+                <div style={{ width: '100%', height: 8, background: '#e1e6f0', borderRadius: 4, overflow: 'hidden' }}><div style={{ width: '100%', height: '100%', background: '#46d6a3' }}></div></div>
+                <small style={{ marginTop: 12, display: 'block', color: '#74819c' }}>Registered accounts</small>
+              </div>
+              
+              <div className="staff-metric" style={{ background: '#fff', padding: 24, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', border: '1px solid #f0f3f8' }}>
+                <span style={{ color: '#52617f', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 12, letterSpacing: 1 }}>Pending Tasks</span>
+                <strong style={{ fontSize: 36, display: 'block', margin: '12px 0', color: '#101d57' }}>{tasks.length}</strong>
+                <div style={{ width: '100%', height: 8, background: '#e1e6f0', borderRadius: 4, overflow: 'hidden' }}><div style={{ width: `${Math.min(100, (tasks.length / 50) * 100)}%`, height: '100%', background: '#f5a623' }}></div></div>
+                <small style={{ marginTop: 12, display: 'block', color: '#74819c' }}>Awaiting safety review</small>
+              </div>
+
+              <div className="staff-metric" style={{ background: '#fff', padding: 24, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', border: '1px solid #f0f3f8' }}>
+                <span style={{ color: '#52617f', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 12, letterSpacing: 1 }}>Open Reports</span>
+                <strong style={{ fontSize: 36, display: 'block', margin: '12px 0', color: '#a43f3f' }}>{reports.length}</strong>
+                <div style={{ width: '100%', height: 8, background: '#e1e6f0', borderRadius: 4, overflow: 'hidden' }}><div style={{ width: `${Math.min(100, (reports.length / 20) * 100)}%`, height: '100%', background: '#a43f3f' }}></div></div>
+                <small style={{ marginTop: 12, display: 'block', color: '#74819c' }}>Needs moderation</small>
+              </div>
+
+              <div className="staff-metric" style={{ background: '#fff', padding: 24, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', border: '1px solid #f0f3f8' }}>
+                <span style={{ color: '#52617f', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 12, letterSpacing: 1 }}>Open Disputes</span>
+                <strong style={{ fontSize: 36, display: 'block', margin: '12px 0', color: '#a43f3f' }}>{disputes.length}</strong>
+                <div style={{ width: '100%', height: 8, background: '#e1e6f0', borderRadius: 4, overflow: 'hidden' }}><div style={{ width: `${Math.min(100, (disputes.length / 20) * 100)}%`, height: '100%', background: '#a43f3f' }}></div></div>
+                <small style={{ marginTop: 12, display: 'block', color: '#74819c' }}>Requires a decision</small>
+              </div>
+            </section>
           <section className="panel staff-queue">
             <div className="panel-title-row">
               <div>
@@ -6272,18 +6317,18 @@ function StaffWorkspace({
           </button>
         </div>
         {audit.length ? (
-          audit.map((entry) => (
-            <article className="staff-case" key={entry.id}>
-              <div>
-                <strong>{entry.action}</strong>
-                <span>
-                  {entry.entity_type} ·{" "}
-                  {new Date(entry.created_at).toLocaleString()}
-                </span>
-              </div>
-            </article>
-          ))
-        ) : (
+            audit.map((entry) => (
+              <article className="staff-case" key={entry.id}>
+                <div>
+                  <strong>{entry.action}</strong>
+                  <span>
+                    {entry.entity_type} {entry.profiles?.full_name ? "by " + entry.profiles.full_name : ""} •{" "}
+                    {new Date(entry.created_at).toLocaleString()}
+                  </span>
+                </div>
+              </article>
+            ))
+          ) : (
           <p className="feed-message">
             No staff actions have been recorded yet.
           </p>
@@ -9381,5 +9426,86 @@ void LegacyPostTaskReal;
 void LegacyFreshAccount;
 void FreshChat;
 void FreshTasks;
+
+
+function HelpSafetyWidget() {
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"guidelines"|"report">("guidelines");
+  const [reportReason, setReportReason] = useState("");
+  const [reportedUserId, setReportedUserId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const submit = async () => {
+    if (reportReason.length < 5) return setNotice("Reason must be at least 5 characters.");
+    setIsSubmitting(true);
+    setNotice("");
+    const { error } = await supabase.from("reports").insert({ reported_user_id: reportedUserId || null, reason: reportReason });
+    setIsSubmitting(false);
+    if (error) setNotice(error.message);
+    else setSuccess(true);
+  };
+
+  return (
+    <>
+      <button onClick={() => setOpen(true)} style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9000, background: '#159b78', color: '#fff', border: 'none', borderRadius: '50px', padding: '12px 20px', fontWeight: 'bold', boxShadow: '0 10px 25px rgba(21,155,120,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 18, background: 'rgba(255,255,255,0.2)', width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>?</span> Help & Safety
+      </button>
+      {open && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setOpen(false)}>
+          <div style={{ background: '#fff', width: '100%', maxWidth: 500, borderRadius: 20, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: 20, background: '#f7f9fe', borderBottom: '1px solid #e1e6f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: 18, color: '#101d57' }}>Help & Safety</h2>
+              <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#52617f' }}>×</button>
+            </div>
+            <div style={{ display: 'flex', borderBottom: '1px solid #e1e6f0' }}>
+              <button onClick={() => setTab("guidelines")} style={{ flex: 1, padding: 15, background: tab === "guidelines" ? '#fff' : '#f7f9fe', border: 'none', borderBottom: tab === "guidelines" ? '2px solid #159b78' : '2px solid transparent', fontWeight: 'bold', color: tab === "guidelines" ? '#101d57' : '#74819c', cursor: 'pointer' }}>Guidelines</button>
+              <button onClick={() => setTab("report")} style={{ flex: 1, padding: 15, background: tab === "report" ? '#fff' : '#f7f9fe', border: 'none', borderBottom: tab === "report" ? '2px solid #a43f3f' : '2px solid transparent', fontWeight: 'bold', color: tab === "report" ? '#101d57' : '#74819c', cursor: 'pointer' }}>File a Report</button>
+            </div>
+            <div style={{ padding: 24, overflowY: 'auto' }}>
+              {tab === "guidelines" ? (
+                <div style={{ color: '#52617f', fontSize: 14, lineHeight: 1.6 }}>
+                  <h3 style={{ marginTop: 0, color: '#101d57', marginBottom: 15 }}>Community Guidelines</h3>
+                  <p style={{ marginBottom: 10 }}><strong>1. Treat all members with respect.</strong> Harassment or discrimination is strictly prohibited.</p>
+                  <p style={{ marginBottom: 10 }}><strong>2. Ensure your tasks are safe.</strong> Do not post illegal, dangerous, or harmful tasks.</p>
+                  <p style={{ marginBottom: 10 }}><strong>3. Keep it on the platform.</strong> Do not ask for or provide services outside of QuestKarte.</p>
+                  <p style={{ marginBottom: 10 }}><strong>4. Be honest.</strong> Misrepresenting your skills or identity may result in a ban.</p>
+                  <div style={{ marginTop: 20, padding: 15, background: 'rgba(21,155,120,0.1)', borderRadius: 10, color: '#159b78' }}>
+                    If you encounter behavior that violates these guidelines, please switch to the <strong>File a Report</strong> tab to alert our moderation team.
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: '#52617f', fontSize: 14 }}>
+                  {success ? (
+                    <div style={{ background: 'rgba(70,214,163,0.1)', color: '#159b78', padding: 20, borderRadius: 10, textAlign: 'center' }}>
+                      <span style={{ fontSize: 40, display: 'block', marginBottom: 10 }}>✓</span>
+                      <strong>Report submitted!</strong>
+                      <p style={{ marginTop: 5 }}>Our safety team will review it shortly.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <p style={{ marginTop: 0, marginBottom: 20 }}>Use this form to report a general issue or a specific user. Moderators review all reports securely.</p>
+                      {notice && <p style={{ color: '#a43f3f', marginBottom: 15, padding: 10, background: '#fff7f7', borderRadius: 8, border: '1px solid #e5bbbb' }}>{notice}</p>}
+                      <label style={{ display: 'block', marginBottom: 15 }}>
+                        <strong style={{ display: 'block', marginBottom: 5, color: '#101d57' }}>Reported User ID (Optional)</strong>
+                        <input value={reportedUserId} onChange={e => setReportedUserId(e.target.value)} placeholder="Paste User ID if applicable..." style={{ width: '100%', padding: 12, borderRadius: 10, border: '1px solid #cdd8ea', outline: 'none' }} />
+                      </label>
+                      <label style={{ display: 'block', marginBottom: 20 }}>
+                        <strong style={{ display: 'block', marginBottom: 5, color: '#101d57' }}>Reason for Report *</strong>
+                        <textarea value={reportReason} onChange={e => setReportReason(e.target.value)} placeholder="Please explain the issue in detail..." style={{ width: '100%', minHeight: 120, padding: 12, borderRadius: 10, border: '1px solid #cdd8ea', outline: 'none', resize: 'vertical' }} />
+                      </label>
+                      <button onClick={submit} disabled={isSubmitting} style={{ width: '100%', padding: 15, borderRadius: 12, background: '#a43f3f', color: '#fff', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: 15 }}>{isSubmitting ? 'Submitting...' : 'Submit Report to Moderators'}</button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 export default App;
