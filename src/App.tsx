@@ -918,6 +918,7 @@ function AppShell({
         <MemberGuide onNavigate={(destination) => setPage(destination)} />
       )}
       {!staffRole && <CameraInputBridge />}
+        <HelpSafetyWidget />
     </div>
   );
 }
