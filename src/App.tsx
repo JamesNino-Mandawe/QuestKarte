@@ -7009,7 +7009,7 @@ function TaskReviewForm({
   submitReview: (task: any, isClient: boolean, rating: number, comment: string) => Promise<void>;
 }) {
   const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState("");
+  const commentRef = useRef("");
 
   return (
     <div className="tlc-review-zone">
@@ -7028,15 +7028,15 @@ function TaskReviewForm({
         ))}
       </div>
       <textarea
-        value={comment}
+        defaultValue={""}
         maxLength={1500}
-        onChange={(e) => setComment(e.target.value)}
+        onChange={(e) => { commentRef.current = e.target.value; }}
         placeholder={`Optional written ${isClient ? 'feedback' : 'review'} visible on the ${isClient ? "client's" : "provider's"} profile.`}
       />
       <button
         type="button"
         className="btn primary"
-        onClick={() => void submitReview(task, isClient, rating, comment)}
+        onClick={() => void submitReview(task, isClient, rating, commentRef.current)}
       >
         Submit review
       </button>
