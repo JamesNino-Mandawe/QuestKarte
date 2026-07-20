@@ -5557,7 +5557,62 @@ function Account({
 }
 
 
+
+function VerificationQueueItem({ record, openVerificationEvidence, decideVerification, setRejectModal }: {
+  record: VerificationRecord;
+  openVerificationEvidence: (r: VerificationRecord) => void;
+  decideVerification: (r: VerificationRecord, a: boolean) => void;
+  setRejectModal: (m: any) => void;
+}) {
+  const [contact, setContact] = useState<{name: string, email: string} | null>(null);
+  useEffect(() => {
+    supabase.rpc('get_user_contact_info', { uid: record.user_id }).then(({ data }) => setContact(data));
+  }, [record.user_id]);
+
+  return (
+    <article className="staff-case" key={record.id}>
+      <div>
+        <strong>
+          {record.type === "student"
+            ? "Student verification"
+            : "Professional verification"}
+        </strong>
+        {contact && <div style={{ fontSize: 13, color: '#159b78', margin: '4px 0 6px', fontWeight: 600 }}>{contact.name} ({contact.email})</div>}
+        <span>
+          {record.school_name ||
+            record.institution_or_company ||
+            "Institution not provided"}{" "}
+          · {record.document_name}
+        </span>
+      </div>
+      <div className="staff-actions">
+        <button
+          className="btn secondary"
+          onClick={() => void openVerificationEvidence(record)}
+        >
+          View private documents
+        </button>
+        <button
+          className="btn primary"
+          onClick={() => void decideVerification(record, true)}
+        >
+          Approve
+        </button>
+        <button
+          className="btn danger"
+          onClick={() => {
+            setRejectModal({ type: 'verification', record });
+          }}
+        >
+          Reject
+        </button>
+      </div>
+    </article>
+  );
+}
+
 function StaffDashboard({
+
   role,
   session,
   onExit,
@@ -6197,45 +6252,14 @@ function StaffWorkspace({
           <h3>Verification queue</h3>
           {verifications.length ? (
             verifications.map((record) => (
-              <article className="staff-case" key={record.id}>
-                <div>
-                  <strong>
-                    {record.type === "student"
-                      ? "Student verification"
-                      : "Professional verification"}
-                  </strong>
-                  <span>
-                    {record.school_name ||
-                      record.institution_or_company ||
-                      "Institution not provided"}{" "}
-                    · {record.document_name}
-                  </span>
-                </div>
-                <div className="staff-actions">
-                  <button
-                    className="btn secondary"
-                    onClick={() => void openVerificationEvidence(record)}
-                  >
-                    View private documents
-                  </button>
-                  <button
-                    className="btn primary"
-                    onClick={() => void decideVerification(record, true)}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    className="btn danger"
-                    onClick={() => {
-                      setRejectModal({ type: 'verification', record });
-                      setRejectReason("");
-                    }}
-                  >
-                    Reject
-                  </button>
-                </div>
-              </article>
-            ))
+                <VerificationQueueItem 
+                  key={record.id} 
+                  record={record} 
+                  openVerificationEvidence={openVerificationEvidence} 
+                  decideVerification={decideVerification} 
+                  setRejectModal={(m) => { setRejectModal(m); setRejectReason(""); }} 
+                />
+              ))
           ) : (
             <p className="feed-message">
               No verification requests are waiting.
