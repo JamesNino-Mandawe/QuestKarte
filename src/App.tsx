@@ -4015,7 +4015,7 @@ function FreshChatReal({
   const isOnline = current ? onlineUsers.has(current.otherId) : false;
 
   return (
-    <div className="elite-chat-layout view">
+    <div className={`elite-chat-layout view ${selected ? 'has-open-thread' : ''}`}>
       <div className="convo-list">
         {conversations.map((c) => (
           <button
@@ -4046,6 +4046,7 @@ function FreshChatReal({
           <>
             {/* Thread Header */}
             <div className="thread-head">
+                <button type="button" className="thread-back-btn" onClick={() => setSelected(null)}><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
               <div className="thread-head-user">
                 <div className="convo-avatar">
                   {current.otherAvatar ? (
