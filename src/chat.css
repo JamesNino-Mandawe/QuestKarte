@@ -202,3 +202,15 @@
 .chat-text-input {
   line-height: 1.4;
 }
+
+/* Fix 2: Giant Avatar in Chat List */
+.convo-avatar img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.thread-head-user .convo-avatar img {
+  width: 40px;
+  height: 40px;
+}

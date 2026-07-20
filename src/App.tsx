@@ -1865,6 +1865,14 @@ function MarketplaceFeedLive({
       );
     }
     const memberIds = [...new Set(rows.map((task) => task.posted_by))];
+      const autoId = localStorage.getItem('questkarte-auto-apply');
+      if (autoId) {
+        const target = rows.find(x => x.id === autoId);
+        if (target) {
+          setApplicationTask(target as any);
+          localStorage.removeItem('questkarte-auto-apply');
+        }
+      }
     const categoryIds = [
       ...new Set(
         rows
@@ -2847,7 +2855,7 @@ function FreshDiscovery({
                     <button className="btn primary" style={{ width: '100%', background: 'linear-gradient(135deg, #1C9286, #159b78)', padding: '14px', border: 'none', borderRadius: '24px', color: 'white', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 10px 20px rgba(28,146,134,0.3)' }} onClick={() => { 
                       setPreviewTask(null);
                       // Trigger a custom event to navigate and open the task
-                      window.dispatchEvent(new CustomEvent('open-marketplace-task', { detail: previewTask.id }));
+                      localStorage.setItem('questkarte-auto-apply', previewTask.id); window.dispatchEvent(new CustomEvent('navigate-tasks'));
                     }}>Proceed to Application</button>
                   </>
                 )}
@@ -3280,7 +3288,18 @@ function TaskLifecycleCard({
             : 1;
 
   return (
-    <div className="task-lifecycle-card">
+      <div className="task-lifecycle-card">
+        {task.status === "completed" && (
+          <div style={{ background: '#e1f5e8', padding: '10px 15px', color: '#159b78', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #c2e6d1', borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
+            <strong>Task successfully completed!</strong>
+            <button className="btn" style={{ fontSize: 12, padding: '4px 10px', background: '#fff', border: '1px solid #159b78', color: '#159b78' }} onClick={() => {
+              if(confirm('Remove this finished task from your view?')) {
+                localStorage.setItem('dismissed-task-' + task.id, 'true');
+                reloadTasks();
+              }
+            }}>Clear from view</button>
+          </div>
+        )}
       <div className="tlc-header">
         <div className="tlc-header-left">
           <div className="tlc-title">{task.title}</div>
@@ -3638,8 +3657,7 @@ function FreshTasks({
         </section>
       ) : entries.length ? (
         <section className="task-work-list">
-          {tab === "posted"
-            ? posted.map((task) => (
+          {tab === "posted" ? posted.filter(task => localStorage.getItem('dismissed-task-' + task.id) !== 'true').map((task) => (
                 <TaskLifecycleCard
                   key={task.id}
                   task={task}
@@ -3648,9 +3666,9 @@ function FreshTasks({
                   reloadTasks={() => void load()}
                 />
               ))
-            : applied.map(
-                (application) =>
-                  application.task && (
+            : applied.filter(application => application.task && localStorage.getItem('dismissed-task-' + application.task.id) !== 'true').map(
+                  (application) =>
+                    application.task && (
                     <TaskLifecycleCard
                       key={application.id}
                       task={application.task}
@@ -9502,7 +9520,7 @@ function HelpSafetyWidget() {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} style={{ position: 'fixed', bottom: 90, right: 24, zIndex: 9000, background: '#159b78', color: '#fff', border: 'none', borderRadius: '50px', padding: '12px 20px', fontWeight: 'bold', boxShadow: '0 10px 25px rgba(21,155,120,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <button onClick={() => setOpen(true)} style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9000, background: '#159b78', color: '#fff', border: 'none', borderRadius: '50px', padding: '12px 20px', fontWeight: 'bold', boxShadow: '0 10px 25px rgba(21,155,120,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 18, background: 'rgba(255,255,255,0.2)', width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>?</span> Help & Safety
       </button>
       {open && (
