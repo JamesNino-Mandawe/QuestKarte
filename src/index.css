@@ -382,3 +382,12 @@ body,button,input,textarea{font-family:'DM Sans',ui-sans-serif,system-ui,sans-se
   border-radius: 24px !important;
   border: 1px solid rgba(255,255,255,0.1) !important;
 }
+
+/* Fix 3: Map Popup Cut Off */
+.leaflet-popup-content-wrapper {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.map-panel {
+  min-height: 600px;
+}

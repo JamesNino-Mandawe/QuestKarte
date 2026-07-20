@@ -186,3 +186,19 @@
 .ward-ft { color: #a43030; font-weight: 800; font-size: 13px; margin-bottom: 8px; }
 .ward-blur { filter: blur(4px); opacity: 0.5; color: #fff; margin-bottom: 8px; }
 .ward-note { color: #e4bd42; font-size: 12px; margin: 0; }
+
+/* Fix 5: Chat Image Giant Bug */
+.msg-bubble img {
+  max-width: 100%;
+  border-radius: 8px;
+  max-height: 300px;
+  object-fit: cover;
+}
+
+/* Fix 7: Adjust chat input container for textarea */
+.chat-composer {
+  align-items: center;
+}
+.chat-text-input {
+  line-height: 1.4;
+}

@@ -2834,9 +2834,23 @@ function FreshDiscovery({
               <p style={{ color: '#a5b7d6', lineHeight: 1.6, marginBottom: '40px', fontSize: '15px' }}>{previewTask.description}</p>
               
               <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <h3 style={{ margin: '0 0 12px', fontSize: '18px', color: '#fff' }}>Join QuestKarte to unlock this task!</h3>
-                <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#879cbd' }}>Sign in to safely apply, message the poster, and get paid.</p>
-                <button className="btn primary" style={{ width: '100%', background: 'linear-gradient(135deg, #1C9286, #159b78)', padding: '14px', border: 'none', borderRadius: '24px', color: 'white', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 10px 20px rgba(28,146,134,0.3)' }} onClick={() => { setPreviewTask(null); window.scrollTo(0,0); }}>Sign In / Create Account</button>
+                {(!profile || guest) ? (
+                  <>
+                    <h3 style={{ margin: '0 0 12px', fontSize: '18px', color: '#fff' }}>Join QuestKarte to unlock this task!</h3>
+                    <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#879cbd' }}>Sign in to safely apply, message the poster, and get paid.</p>
+                    <button className="btn primary" style={{ width: '100%', background: 'linear-gradient(135deg, #1C9286, #159b78)', padding: '14px', border: 'none', borderRadius: '24px', color: 'white', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 10px 20px rgba(28,146,134,0.3)' }} onClick={() => { setPreviewTask(null); window.scrollTo(0,0); }}>Sign In / Create Account</button>
+                  </>
+                ) : (
+                  <>
+                    <h3 style={{ margin: '0 0 12px', fontSize: '18px', color: '#fff' }}>Apply for this task</h3>
+                    <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#879cbd' }}>Click below to apply and message the poster.</p>
+                    <button className="btn primary" style={{ width: '100%', background: 'linear-gradient(135deg, #1C9286, #159b78)', padding: '14px', border: 'none', borderRadius: '24px', color: 'white', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 10px 20px rgba(28,146,134,0.3)' }} onClick={() => { 
+                      setPreviewTask(null);
+                      // Trigger a custom event to navigate and open the task
+                      window.dispatchEvent(new CustomEvent('open-marketplace-task', { detail: previewTask.id }));
+                    }}>Proceed to Application</button>
+                  </>
+                )}
               </div>
             </section>
           </div>
@@ -5126,8 +5140,10 @@ function PostTask({
   const [category, setCategory] = useState("Cleaning");
   const [swap, setSwap] = useState(false);
   const [studentOnly, setStudentOnly] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(localStorage.getItem('draft-title') || "");
+    const [description, setDescription] = useState(localStorage.getItem('draft-desc') || "");
+    useEffect(() => { localStorage.setItem('draft-title', title); }, [title]);
+    useEffect(() => { localStorage.setItem('draft-desc', description); }, [description]);
   const [commission, setCommission] = useState("");
   const [location, setLocation] = useState("");
   const [savingTask, setSavingTask] = useState(false);
@@ -8621,8 +8637,10 @@ function LegacyPostTaskReal({
   profile: MemberProfile | null;
   onPosted: () => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(localStorage.getItem('draft-title') || "");
+    const [description, setDescription] = useState(localStorage.getItem('draft-desc') || "");
+    useEffect(() => { localStorage.setItem('draft-title', title); }, [title]);
+    useEffect(() => { localStorage.setItem('draft-desc', description); }, [description]);
   const [location, setLocation] = useState("");
   const [commission, setCommission] = useState("");
   const [category, setCategory] = useState("Cleaning");
@@ -8856,8 +8874,10 @@ function LegacyPostTaskRealV2({
   profile: MemberProfile | null;
   onPosted: () => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(localStorage.getItem('draft-title') || "");
+    const [description, setDescription] = useState(localStorage.getItem('draft-desc') || "");
+    useEffect(() => { localStorage.setItem('draft-title', title); }, [title]);
+    useEffect(() => { localStorage.setItem('draft-desc', description); }, [description]);
   const [location, setLocation] = useState("");
   const [commission, setCommission] = useState("");
   const [category, setCategory] = useState("Cleaning");
@@ -9120,8 +9140,10 @@ function PostTaskReal({
   profile: MemberProfile | null;
   onPosted: () => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(localStorage.getItem('draft-title') || "");
+    const [description, setDescription] = useState(localStorage.getItem('draft-desc') || "");
+    useEffect(() => { localStorage.setItem('draft-title', title); }, [title]);
+    useEffect(() => { localStorage.setItem('draft-desc', description); }, [description]);
   const [location, setLocation] = useState("");
   const [commission, setCommission] = useState("");
   const [category, setCategory] = useState("Cleaning");
@@ -9480,7 +9502,7 @@ function HelpSafetyWidget() {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9000, background: '#159b78', color: '#fff', border: 'none', borderRadius: '50px', padding: '12px 20px', fontWeight: 'bold', boxShadow: '0 10px 25px rgba(21,155,120,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <button onClick={() => setOpen(true)} style={{ position: 'fixed', bottom: 90, right: 24, zIndex: 9000, background: '#159b78', color: '#fff', border: 'none', borderRadius: '50px', padding: '12px 20px', fontWeight: 'bold', boxShadow: '0 10px 25px rgba(21,155,120,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 18, background: 'rgba(255,255,255,0.2)', width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>?</span> Help & Safety
       </button>
       {open && (
