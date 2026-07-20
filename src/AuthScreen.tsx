@@ -61,7 +61,7 @@ export default function AuthScreen({ onExplore, onBack }: { onExplore: () => voi
 
   return (
     <main className="auth-page">
-      <button className="back-to-website" onClick={onBack} style={{ position: 'absolute', top: '30px', left: '30px', background: 'transparent', border: '1px solid var(--stroke)', color: 'var(--muted)', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', zIndex: 10 }}>
+      <button className="back-to-website" onClick={onBack} style={{ position: 'absolute', top: '30px', left: '30px', background: 'rgba(30, 36, 48, 0.85)', border: '1px solid rgba(255, 255, 255, 0.12)', color: '#ffffff', padding: '10px 18px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', zIndex: 10, backdropFilter: 'blur(10px)', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', fontWeight: 600 }}>
         <span>←</span> Return to website
       </button>
       <div className="auth-compass" aria-hidden="true"><i /><b /><em /></div>
