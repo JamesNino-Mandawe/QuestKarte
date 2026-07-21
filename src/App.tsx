@@ -10189,47 +10189,4 @@ function ChatAttachment({ msg, onImageClick }: { msg: any, onImageClick: (url: s
       <span style={{ fontSize: 10, opacity: 0.6 }}>&#8595;</span>
     </a>
   );
-}: { msg: any, onImageClick: (url: string) => void }) {
-  const [url, setUrl] = useState<string | null>(msg.attachment_url?.startsWith('http') ? msg.attachment_url : null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    if (msg.attachment_url && !msg.attachment_url.startsWith('http')) {
-      supabase.storage.from("task-attachments").createSignedUrl(msg.attachment_url, 3600 * 24).then(({ data }) => {
-        if (data) {
-          setUrl(data.signedUrl);
-        } else {
-          setError(true);
-        }
-      });
-    }
-  }, [msg.attachment_url]);
-
-  if (error) return <div style={{ fontSize: 11, color: '#d93025', fontStyle: 'italic', padding: '4px 8px', background: 'rgba(255,255,255,0.8)', borderRadius: 4 }}>Attachment unavailable</div>;
-  if (!url) return <div style={{ fontSize: 11, color: '#999', fontStyle: 'italic', padding: '4px 8px' }}>Loading attachment...</div>;
-
-  if (msg.attachment_type === "image") {
-    return (
-      <img 
-        src={url} 
-        alt="Attachment" 
-        className="msg-attachment-img" 
-        onClick={() => onImageClick(url)} 
-        style={{ cursor: 'zoom-in', WebkitTouchCallout: 'default', display: 'block' }} 
-      />
-    );
-  }
-
-  return (
-    <a 
-      href={url} 
-      target="_blank" 
-      rel="noreferrer" 
-      download 
-      className="msg-attachment-file" 
-      style={{ display: 'inline-block', background: 'rgba(255,255,255,0.9)', padding: '6px 12px', borderRadius: 8, color: '#12255c', textDecoration: 'none', fontWeight: 600, fontSize: 12, border: '1px solid #cdd8ea' }}
-    >
-      📄 View/Download File
-    </a>
-  );
 }
