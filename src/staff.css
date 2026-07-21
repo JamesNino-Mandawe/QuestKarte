@@ -42,7 +42,7 @@
 .rev-amount {
   font-size: 38px;
   font-weight: 900;
-  color: #facc15;
+  color: #60a5fa;
   margin: 0;
   font-family: "Playfair Display", serif;
   text-shadow: 0 2px 10px rgba(250, 204, 21, 0.2);
@@ -75,8 +75,8 @@
   transform: translateY(-2px);
 }
 .rev-bar.active {
-  background: #facc15;
-  box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
+  background: #60a5fa;
+  box-shadow: 0 0 15px rgba(96, 165, 250, 0.3);
   opacity: 1;
 }
 .rev-labels {

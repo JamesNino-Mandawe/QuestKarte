@@ -5875,8 +5875,8 @@ function AdminAnalyticsDashboard() {
   return (
     <div className="admin-analytics-wrapper">
       <div className="analytics-card">
-        <h3 className="analytics-card-title">Platform Revenue (July 2024)</h3>
-        <h2 className="rev-amount">₱42,850</h2>
+        <h3 className="analytics-card-title">Completed Quests (July 2024)</h3>
+        <h2 className="rev-amount" style={{ color: '#60a5fa' }}>1,428</h2>
         <div className="rev-trend">▲ 18% vs last month</div>
         
         <div className="rev-bars-container">
@@ -5990,7 +5990,6 @@ function StaffWorkspace({
   const tabs: { id: StaffTab; label: string }[] = isAdmin
     ? [
         { id: "overview", label: "Overview" },
-        { id: "task_review", label: "Task review" },
         { id: "members", label: "Members" },
         { id: "moderators", label: "Moderators" },
         { id: "categories", label: "Categories" },
@@ -6049,7 +6048,7 @@ function StaffWorkspace({
     ] = await Promise.all([
       supabase
         .from("tasks")
-        .select("id,title,description,location_label,created_at,posted_by,category_id,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,poster:profiles!tasks_posted_by_fkey(full_name,avatar_url,email)")
+        .select("id,title,description,location_label,created_at,posted_by,category_id,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,poster:profiles!tasks_posted_by_fkey(full_name,avatar_url)")
         .eq("status", "draft")
         .eq("moderation_state", "pending_review")
         .order("created_at", { ascending: true }),
