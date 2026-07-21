@@ -3338,14 +3338,6 @@ function TaskLifecycleCard({
     setSubmitting(false);
   };
 
-  const handleAcknowledgePayment = async () => {
-    setSubmitting(true);
-    const { error } = await supabase.from('tasks').update({ payment_status: 'completed' }).eq('id', task.id);
-    if (error) alert("Error: " + error.message);
-    else reloadTasks();
-    setSubmitting(false);
-  };
-
   const handleClientConfirm = async () => {
     if (!confirm("Are you sure you want to release the payment?")) return;
     setSubmitting(true);
@@ -3400,11 +3392,9 @@ function TaskLifecycleCard({
           <div style={{ background: '#e1f5e8', padding: '10px 15px', color: '#159b78', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #c2e6d1', borderTopLeftRadius: 12, borderTopRightRadius: 12 }}>
             <strong>Task successfully completed!</strong>
             <button className="btn" style={{ fontSize: 12, padding: '4px 10px', background: '#fff', border: '1px solid #159b78', color: '#159b78' }} onClick={() => {
-              if (confirm('Remove this finished task from your view?')) {
-                const field = isApplicant ? 'hidden_by_assignee' : 'hidden_by_poster';
-                supabase.from("tasks").update({ [field]: true }).eq("id", task.id).then(() => {
-                  reloadTasks();
-                });
+              if(confirm('Remove this finished task from your view?')) {
+                localStorage.setItem('dismissed-task-' + task.id, 'true');
+                reloadTasks();
               }
             }}>Clear from view</button>
           </div>
@@ -3420,9 +3410,8 @@ function TaskLifecycleCard({
                   style={{ fontSize: 11, padding: '4px 8px', background: '#e1f5e8', color: '#159b78', border: '1px solid #c2e6d1', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
                   onClick={() => {
                     if (window.confirm('Remove this finished task from your history?')) {
-                      supabase.from("tasks").update({ hidden_by_poster: true }).eq("id", task.id).then(() => {
-                        window.location.reload();
-                      });
+                      localStorage.setItem('dismissed-task-' + task.id, 'true');
+                      window.location.reload();
                     }
                   }}
                 >
@@ -3449,44 +3438,8 @@ function TaskLifecycleCard({
         </div>
         <div className={`tlc-status-badge ${badgeClass}`}>{badgeText}</div>
       </div>
-      <div className="tlc-body" style={task.status === "completed" ? { position: 'relative', overflow: 'hidden' } : {}}>
-        {task.status === "completed" && (
-          <div style={{
-            position: 'absolute',
-            top: '40%',
-            left: '50%',
-            transform: 'translate(-50%, -50%) rotate(-15deg)',
-            fontSize: '4rem',
-            fontWeight: 900,
-            color: 'rgba(21, 155, 120, 0.07)',
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-            letterSpacing: '8px',
-            zIndex: 0
-          }}>
-            COMPLETED
-          </div>
-        )}
-        {task.status !== "completed" && (
-          {task.status === "completed" && (
-          <div style={{
-            position: 'absolute',
-            top: '40%',
-            left: '50%',
-            transform: 'translate(-50%, -50%) rotate(-15deg)',
-            fontSize: '4rem',
-            fontWeight: 900,
-            color: 'rgba(21, 155, 120, 0.07)',
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-            letterSpacing: '8px',
-            zIndex: 0
-          }}>
-            COMPLETED
-          </div>
-        )}
-        {task.status !== "completed" && (
-          <div className="task-timeline">
+      <div className="tlc-body">
+        <div className="task-timeline">
           <div
             className={`tl-step ${stage >= 1 ? "done" : ""} ${stage === 1 ? "current" : ""}`}
           >
@@ -7021,25 +6974,7 @@ function TaskTimeline({ stages }: { stages: TLStage[] }) {
     </svg>
   );
   return (
-    {task.status === "completed" && (
-          <div style={{
-            position: 'absolute',
-            top: '40%',
-            left: '50%',
-            transform: 'translate(-50%, -50%) rotate(-15deg)',
-            fontSize: '4rem',
-            fontWeight: 900,
-            color: 'rgba(21, 155, 120, 0.07)',
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-            letterSpacing: '8px',
-            zIndex: 0
-          }}>
-            COMPLETED
-          </div>
-        )}
-        {task.status !== "completed" && (
-          <div className="task-timeline">
+    <div className="task-timeline">
       {stages.map((stage, i) => (
         <div
           key={i}
@@ -7642,9 +7577,8 @@ function TaskWorkspace({
                   style={{ fontSize: 11, padding: '4px 8px', background: '#e1f5e8', color: '#159b78', border: '1px solid #c2e6d1', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
                   onClick={() => {
                     if (window.confirm('Remove this finished task from your history?')) {
-                      supabase.from("tasks").update({ hidden_by_assignee: true }).eq("id", task.id).then(() => {
-                        window.location.reload();
-                      });
+                      localStorage.setItem('dismissed-task-' + task.id, 'true');
+                      window.location.reload();
                     }
                   }}
                 >
@@ -7670,7 +7604,7 @@ function TaskWorkspace({
             {badgeLabel(task)}
           </span>
         </div>
-        <div className="tlc-body" style={task.status === "completed" ? { position: 'relative', overflow: 'hidden' } : {}}>
+        <div className="tlc-body">
           <TaskTimeline stages={tlStages(task, isFullyCompleted)} />
 
           {/* Ongoing: chat link */}
@@ -7898,10 +7832,8 @@ function TaskWorkspace({
                   style={{ fontSize: 11, padding: '4px 8px', background: '#e1f5e8', color: '#159b78', border: '1px solid #c2e6d1', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
                   onClick={() => {
                     if (window.confirm('Remove this finished task from your history?')) {
-                      const field = isApplicant ? 'hidden_by_assignee' : 'hidden_by_poster';
-                      supabase.from("tasks").update({ [field]: true }).eq("id", task.id).then(() => {
-                        window.location.reload();
-                      });
+                      localStorage.setItem('dismissed-task-' + task.id, 'true');
+                      window.location.reload();
                     }
                   }}
                 >
@@ -7935,7 +7867,7 @@ function TaskWorkspace({
             </span>
           )}
         </div>
-        <div className="tlc-body" style={task.status === "completed" ? { position: 'relative', overflow: 'hidden' } : {}}>
+        <div className="tlc-body">
           {isAccepted && <TaskTimeline stages={tlStages(task, isFullyCompleted)} />}
 
           {/* Ready to start */}
@@ -9863,13 +9795,13 @@ function TrustHistoryModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="task-modal-backdrop" onClick={onClose} style={{ zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="task-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '440px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden', position: 'relative' }}>
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #eef2f8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff' }}>
-          <h3 style={{ margin: 0, color: '#101d57', fontSize: '18px' }}>Trust Factor History</h3>
-          <button onClick={onClose} style={{ background: '#f0f4f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#53617c', fontSize: '20px' }}>×</button>
+      <div className="task-detail-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="task-modal-header" style={{ marginBottom: 15 }}>
+          <h3 style={{ margin: 0 }}>Trust Factor History</h3>
+          <button onClick={onClose} className="task-modal-close">×</button>
         </div>
         
-        <div style={{ overflowY: 'auto', flex: 1, padding: '24px' }}>
+        <div style={{ overflowY: 'auto', flex: 1, padding: '0 24px 24px' }}>
           {loading ? (
             <p>Loading history...</p>
           ) : events.length === 0 ? (
