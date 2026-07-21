@@ -6438,7 +6438,6 @@ function StaffWorkspace({
                 <small style={{ marginTop: 12, display: 'block', color: '#74819c' }}>Requires a decision</small>
               </div>
             </section>
-          </section>
         </div>
       );
     if (tab === "task_review")
