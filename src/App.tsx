@@ -2541,7 +2541,7 @@ function MarketplaceFeedGuest({ onJoin }: { onJoin: () => void }) {
         : Promise.resolve({ data: [] }),
     ]);
     setMembers(
-      new Map((memberRows || []).map((member) => [member.id, member])),
+      new Map((memberRows || []).map((member) => [member.id, member as any])),
     );
     setCategories(
       new Map(
