@@ -9,6 +9,7 @@ import {
   Popup,
   TileLayer,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import { divIcon } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -9355,6 +9356,7 @@ function PostTaskReal({
     useEffect(() => { localStorage.setItem('draft-title', title); }, [title]);
     useEffect(() => { localStorage.setItem('draft-desc', description); }, [description]);
   const [location, setLocation] = useState("");
+  const [pinCoords, setPinCoords] = useState<[number, number] | null>(null);
   const [commission, setCommission] = useState("");
   const [category, setCategory] = useState("Cleaning");
   const [customCategory, setCustomCategory] = useState("");
@@ -9410,19 +9412,21 @@ function PostTaskReal({
       );
     setSaving(true);
     setNotice("");
-    const coords = await new Promise<{
-      latitude: number | null;
-      longitude: number | null;
-    }>((resolve) => {
-      if (!navigator.geolocation)
-        return resolve({ latitude: null, longitude: null });
-      navigator.geolocation.getCurrentPosition(
-        ({ coords: current }) =>
-          resolve({ latitude: current.latitude, longitude: current.longitude }),
-        () => resolve({ latitude: null, longitude: null }),
-        { timeout: 7000, maximumAge: 60000 },
-      );
-    });
+    const coords = pinCoords 
+      ? { latitude: pinCoords[0], longitude: pinCoords[1] } 
+      : await new Promise<{
+          latitude: number | null;
+          longitude: number | null;
+        }>((resolve) => {
+          if (!navigator.geolocation)
+            return resolve({ latitude: null, longitude: null });
+          navigator.geolocation.getCurrentPosition(
+            ({ coords: current }) =>
+              resolve({ latitude: current.latitude, longitude: current.longitude }),
+            () => resolve({ latitude: null, longitude: null }),
+            { timeout: 7000, maximumAge: 60000 },
+          );
+        });
     const { data: categoryRow } = await supabase
       .from("categories")
       .select("id")
@@ -9627,16 +9631,19 @@ function PostTaskReal({
             />
           </label>
         )}
-        <label className="field-group">
-          <span className="field-label">General area</span>
-          <input
-            className="field-input"
-            required
-            value={location}
-            onChange={(event) => setLocation(event.target.value)}
-            placeholder="e.g. Lahug, Cebu City"
-          />
-        </label>
+        <div className="field-group" style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+          <span className="field-label">Exact location pin</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <input
+              className="field-input"
+              required
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+              placeholder="Area description (e.g. Lahug, Cebu City)"
+            />
+            <LocationPickerMap position={pinCoords} setPosition={setPinCoords} />
+          </div>
+        </div>
         <label className="upload-box photo-dropzone">
           <strong>Add reference photos</strong>
           <small>
@@ -9817,6 +9824,39 @@ function TrustHistoryModal({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LocationPickerMap({ position, setPosition }: { position: [number, number] | null, setPosition: (pos: [number, number]) => void }) {
+  const center: [number, number] = position || [10.3157, 123.8854];
+
+  function MapClickHandler() {
+    useMapEvents({
+      click(e) {
+        setPosition([e.latlng.lat, e.latlng.lng]);
+      },
+    });
+    return null;
+  }
+
+  return (
+    <div style={{ height: '250px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid #cdd8ea', marginTop: '8px', zIndex: 0 }}>
+      <MapContainer center={center} zoom={position ? 14 : 11} scrollWheelZoom={false} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+        <TileLayer
+          attribution='&copy; OpenStreetMap'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        />
+        <MapClickHandler />
+        {position && (
+          <Marker position={position} />
+        )}
+      </MapContainer>
+      <div style={{ position: 'absolute', zIndex: 400, top: '10px', left: '10px', right: '10px', pointerEvents: 'none' }}>
+        <div style={{ background: 'rgba(255,255,255,0.9)', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', color: '#12255c', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'inline-block', backdropFilter: 'blur(4px)' }}>
+          {position ? '📍 Location pinned' : 'Tap on the map to place a pin'}
         </div>
       </div>
     </div>
