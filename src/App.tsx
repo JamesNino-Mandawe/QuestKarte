@@ -1606,8 +1606,10 @@ function ProfileSetup({
                   key={skill}
                   className={skills.includes(skill) ? "selected" : ""}
                   onClick={() => toggleSkill(skill)}
+                  style={skills.includes(skill) ? { display: 'flex', alignItems: 'center', gap: '6px' } : {}}
                 >
                   {skill}
+                  {skills.includes(skill) && <span style={{ fontSize: '14px', lineHeight: 1, marginTop: '-2px', opacity: 0.7 }}>&times;</span>}
                 </button>
               ))}
             </div>
@@ -4717,8 +4719,10 @@ function FreshAccount({
                           : [...current, skill],
                       )
                     }
+                    style={skills.includes(skill) ? { display: 'flex', alignItems: 'center', gap: '6px' } : {}}
                   >
                     {skill}
+                    {skills.includes(skill) && <span style={{ fontSize: '14px', lineHeight: 1, marginTop: '-2px', opacity: 0.7 }}>&times;</span>}
                   </button>
                 ))}
               </div>
