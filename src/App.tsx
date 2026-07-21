@@ -1972,7 +1972,7 @@ function MarketplaceFeedLive({
       memberIds.length
         ? supabase
             .from("profiles")
-            .select("id,full_name,trust_factor,avatar_url")
+            .select("id,full_name,trust_factor,avatar_url,skills")
             .in("id", memberIds)
         : Promise.resolve({ data: [], error: null }),
       categoryIds.length
@@ -2535,7 +2535,7 @@ function MarketplaceFeedGuest({ onJoin }: { onJoin: () => void }) {
   const [tasks, setTasks] = useState<GuestTask[]>([]);
   const [categories, setCategories] = useState(new Map<string, string>());
   const [members, setMembers] = useState(
-    new Map<string, { full_name: string; trust_factor: number; avatar_url: string | null }>(),
+    new Map<string, { full_name: string; trust_factor: number; avatar_url: string | null; skills?: string[] }>(),
   );
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
@@ -4574,6 +4574,7 @@ function FreshAccount({
   const [bio, setBio] = useState(profile?.bio || "");
   const [city, setCity] = useState(profile?.city || "Cebu City");
   const [skills, setSkills] = useState<string[]>(profile?.skills || []);
+  const [gcash, setGcash] = useState(profile?.skills?.find(s => s.startsWith("GCash:"))?.replace("GCash:", "") || "");
 
   const [avatar, setAvatar] = useState<string | null>(
     profile?.avatar_url || null,
@@ -4598,6 +4599,7 @@ function FreshAccount({
     setBio(profile?.bio || "");
     setCity(profile?.city || "Cebu City");
     setSkills(profile?.skills || []);
+    setGcash(profile?.skills?.find(s => s.startsWith("GCash:"))?.replace("GCash:", "") || "");
     setAvatar(profile?.avatar_url || null);
   }, [profile]);
   const choosePhoto = (file?: File) => {
@@ -4771,10 +4773,19 @@ function FreshAccount({
                 onChange={(event) => setCity(event.target.value)}
               />
             </label>
+            <label>
+              <span>GCash Number (For receiving payments)</span>
+              <input
+                value={gcash}
+                placeholder="09..."
+                maxLength={11}
+                onChange={(event) => setGcash(event.target.value)}
+              />
+            </label>
             <div>
               <span className="setup-label">Services and strengths</span>
               <div className="skill-choices">
-                {Array.from(new Set([...standardSkills, ...skills])).map((skill) => (
+                {Array.from(new Set([...standardSkills, ...skills.filter(s => !s.startsWith("GCash:"))])).map((skill) => (
                   <button
                     type="button"
                     key={skill}
@@ -8735,7 +8746,7 @@ function TaskApplicationInbox({ session }: { session: Session }) {
   type ApplicationRow = { id: string; task_id: string; applicant_id: string; cover_note: string | null; status: string; created_at: string };
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [tasks, setTasks] = useState<Record<string, string>>({});
-  const [members, setMembers] = useState<Record<string, { full_name: string; trust_factor: number; avatar_url: string | null }>>({});
+  const [members, setMembers] = useState<Record<string, { full_name: string; trust_factor: number; avatar_url: string | null; skills?: string[] }>>({});
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [profilePreviewId, setProfilePreviewId] = useState<string | null>(null);
@@ -8751,8 +8762,8 @@ function TaskApplicationInbox({ session }: { session: Session }) {
     const rows = (appRows || []) as ApplicationRow[];
     const applicantIds = [...new Set(rows.map((application) => application.applicant_id))];
     if (applicantIds.length) {
-      const { data: profiles } = await supabase.from("profiles").select("id,full_name,trust_factor,avatar_url").in("id", applicantIds);
-      setMembers(Object.fromEntries((profiles || []).map((profile) => [profile.id, profile])) as Record<string, { full_name: string; trust_factor: number; avatar_url: string | null }>);
+      const { data: profiles } = await supabase.from("profiles").select("id,full_name,trust_factor,avatar_url,skills").in("id", applicantIds);
+      setMembers(Object.fromEntries((profiles || []).map((profile) => [profile.id, profile])) as Record<string, { full_name: string; trust_factor: number; avatar_url: string | null; skills?: string[] }>);
     } else setMembers({});
     setApplications(rows); setLoading(false);
   };
@@ -8931,7 +8942,7 @@ function TaskApplicationInboxV2({ session }: { session: Session }) {
       applicantIds.length
         ? supabase
             .from("profiles")
-            .select("id,full_name,trust_factor,avatar_url")
+            .select("id,full_name,trust_factor,avatar_url,skills")
             .in("id", applicantIds)
         : Promise.resolve({ data: [] }),
       rows.length
