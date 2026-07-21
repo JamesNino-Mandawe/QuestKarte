@@ -727,7 +727,12 @@ function AppShell({
     };
     void fetchUnread();
     const t = window.setInterval(() => void fetchUnread(), 15000);
-    return () => window.clearInterval(t);
+    const handleChatRead = () => void fetchUnread();
+    window.addEventListener('chat-read', handleChatRead);
+    return () => {
+      window.clearInterval(t);
+      window.removeEventListener('chat-read', handleChatRead);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id]);
 
@@ -3915,6 +3920,7 @@ function FreshChatReal({
     otherName: string;
     otherAvatar: string | null;
     title: string | null;
+    isUnread?: boolean;
   };
   type ChatMessage = {
     id: string;
@@ -3939,7 +3945,7 @@ function FreshChatReal({
   const load = async () => {
     const { data: membershipRows } = await supabase
       .from("conversation_members")
-      .select("conversation_id")
+      .select("conversation_id, last_read_at")
       .eq("user_id", session.user.id);
     const ids = (membershipRows || []).map((r) => r.conversation_id);
     if (!ids.length) {
@@ -3950,7 +3956,7 @@ function FreshChatReal({
     const [{ data: convRows }, { data: allMembers }] = await Promise.all([
       supabase
         .from("conversations")
-        .select("id,task_id,updated_at")
+        .select("id,task_id,updated_at,created_at")
         .in("id", ids)
         .order("updated_at", { ascending: false }),
       supabase
@@ -4007,6 +4013,7 @@ function FreshChatReal({
           otherName: otherProfile?.full_name || "QuestKarte member",
           otherAvatar: otherProfile?.avatar_url || null,
           title: c.task_id ? (taskMap.get(c.task_id)?.title || null) : null,
+          isUnread: Boolean(c.updated_at && c.created_at && c.updated_at !== c.created_at && (!membershipRows?.find(r => r.conversation_id === c.id)?.last_read_at || new Date(c.updated_at) > new Date(membershipRows.find(r => r.conversation_id === c.id)!.last_read_at!))),
         };
       }),
     );
@@ -4028,6 +4035,9 @@ function FreshChatReal({
       .update({ last_read_at: new Date().toISOString() })
       .eq("conversation_id", convId)
       .eq("user_id", session.user.id);
+    
+    // Dispatch event to clear sidebar red badge
+    window.dispatchEvent(new Event('chat-read'));
   };
 
   useEffect(() => {
@@ -4173,6 +4183,9 @@ function FreshChatReal({
               )}
               {onlineUsers.has(c.otherId) && (
                 <div className="status-dot online"></div>
+              )}
+              {c.isUnread && (
+                <div className="status-dot unread" style={{ background: '#e53935', right: -2, top: -2, border: '2px solid var(--surface)', width: 14, height: 14, position: 'absolute', borderRadius: '50%' }}></div>
               )}
             </div>
             <div className="convo-text">
