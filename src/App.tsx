@@ -8429,6 +8429,9 @@ function TaskWorkspace({
   ) : null;
 
   // ── Main render ────────────────────────────────────────────────────
+  const visiblePosted = posted.filter((task) => localStorage.getItem('dismissed-task-' + task.id) !== 'true');
+  const visibleApplied = applied.filter((app) => app.task && localStorage.getItem('dismissed-task-' + app.task.id) !== 'true');
+
   return (
     <div className="fresh-tasks view">
       <section className="panel task-workspace-head">
@@ -8450,13 +8453,13 @@ function TaskWorkspace({
           className={tab === "posted" ? "active" : ""}
           onClick={() => setTab("posted")}
         >
-          Posted by me <span>{posted.length}</span>
+          Posted by me <span>{visiblePosted.length}</span>
         </button>
         <button
           className={tab === "applied" ? "active" : ""}
           onClick={() => setTab("applied")}
         >
-          My applications <span>{applied.length}</span>
+          My applications <span>{visibleApplied.length}</span>
         </button>
       </nav>
 
@@ -8468,8 +8471,8 @@ function TaskWorkspace({
         </section>
       ) : tab === "posted" ? (
         <section className="task-work-list">
-          {posted.length ? (
-            posted
+          {visiblePosted.length ? (
+            visiblePosted
               .map((task) => <ClientTaskCard key={task.id} task={task} />)
           ) : (
             <div className="task-empty-state">
@@ -8487,8 +8490,8 @@ function TaskWorkspace({
         </section>
       ) : (
         <section className="task-work-list">
-          {applied.length ? (
-            applied.filter(app => app.task && localStorage.getItem('dismissed-task-' + app.task.id) !== 'true').map((app) => (
+          {visibleApplied.length ? (
+            visibleApplied.map((app) => (
               <ApplicantTaskCard key={app.id} application={app} />
             ))
           ) : (
