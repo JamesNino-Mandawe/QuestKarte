@@ -4036,6 +4036,9 @@ function FreshChatReal({
       .eq("conversation_id", convId)
       .eq("user_id", session.user.id);
     
+    // Instantly clear the red dot from this specific chat
+    setConversations(prev => prev.map(c => c.id === convId ? { ...c, isUnread: false } : c));
+    
     // Dispatch event to clear sidebar red badge
     window.dispatchEvent(new Event('chat-read'));
   };
