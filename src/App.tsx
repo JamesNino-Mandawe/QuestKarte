@@ -2759,16 +2759,8 @@ function FreshDiscovery({
       { enableHighAccuracy: false, timeout: 10000 },
     );
   };
-  const chooseLocation = () => {
+  const chooseLocation = async () => {
     const value = locationQuery.trim().toLowerCase();
-    const areas: Record<string, [number, number]> = {
-      lahug: [10.325, 123.905],
-      "it park": [10.3292, 123.9066],
-      banilad: [10.3507, 123.9145],
-      "sm city": [10.3128, 123.9186],
-      "cebu city": [10.3157, 123.8854],
-      "ayala center": [10.317, 123.9056],
-    };
     const matchingTasks = mapTasks.filter((task) =>
       `${task.title} ${task.description || ""} ${task.categoryName || ""} ${task.location_label}`
         .toLowerCase()
@@ -2777,33 +2769,41 @@ function FreshDiscovery({
     if (value && matchingTasks.length) {
       setTaskFilter(value);
       setPosition([matchingTasks[0].latitude, matchingTasks[0].longitude]);
-      setStatus(
-        `Showing ${matchingTasks.length} approved task${matchingTasks.length === 1 ? "" : "s"} matching “${locationQuery.trim()}”.`,
-      );
+      setStatus(`Showing ${matchingTasks.length} approved task${matchingTasks.length === 1 ? "" : "s"} matching “${locationQuery.trim()}”.`);
       return;
     }
-    const coordinateMatch = value.match(
-      /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/,
-    );
+    const coordinateMatch = value.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
     if (coordinateMatch) {
       setTaskFilter("");
       setPosition([Number(coordinateMatch[1]), Number(coordinateMatch[2])]);
       setStatus("Showing approved tasks around the coordinates you entered.");
       return;
     }
-    const matchedArea = Object.entries(areas).find(([area]) =>
-      value.includes(area),
-    );
-    if (matchedArea) {
+    
+    if (!value) {
       setTaskFilter("");
-      setPosition(matchedArea[1]);
-      setStatus(`Showing approved tasks around ${matchedArea[0]}.`);
+      setStatus("Enter a location or task type to search.");
       return;
     }
-    setTaskFilter("");
-    setStatus(
-      "Try a task type such as Cleaning, or enter Lahug, IT Park, Banilad, Cebu City, or latitude, longitude.",
-    );
+
+    try {
+      setStatus("Searching for location...");
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}`, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'QuestKarte/1.0' }
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setTaskFilter("");
+        setPosition([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+        setStatus(`Showing approved tasks around ${data[0].display_name.split(',')[0]}.`);
+      } else {
+        setTaskFilter("");
+        setStatus("Location not found. Try a different city or neighborhood.");
+      }
+    } catch (e) {
+      setTaskFilter("");
+      setStatus("Network error while searching for location.");
+    }
   };
   const applyRadius = () => {
     const parsed = Number(radiusInput);
@@ -4490,6 +4490,7 @@ function FreshAccount({
 }) {
   const [member, setMember] = useState<MemberProfile | null>(profile);
   const [editing, setEditing] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState(false);
   const [name, setName] = useState(profile?.full_name || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [city, setCity] = useState(profile?.city || "Cebu City");
@@ -4579,8 +4580,16 @@ function FreshAccount({
           onClose={() => setShowCamera(false)}
         />
       )}
+      {avatarPreview && visible?.avatar_url && (
+        <div className="task-modal-backdrop" onClick={() => setAvatarPreview(false)}>
+           <div style={{ position: 'relative', width: 'min(500px, 100%)', background: '#fff', borderRadius: 24, padding: 8 }}>
+              <button type="button" onClick={() => setAvatarPreview(false)} className="task-modal-close" style={{ top: 16, right: 16 }}>&times;</button>
+              <img src={visible.avatar_url} alt="Profile" style={{ width: '100%', borderRadius: 18, display: 'block' }} />
+           </div>
+        </div>
+      )}
       <section className="panel fresh-profile-hero">
-        <div className="fresh-profile-avatar">
+        <div className="fresh-profile-avatar" onClick={() => visible?.avatar_url && setAvatarPreview(true)} style={{ cursor: visible?.avatar_url ? 'pointer' : 'default' }}>
           {visible?.avatar_url ? (
             <img src={visible.avatar_url} alt="" />
           ) : (
