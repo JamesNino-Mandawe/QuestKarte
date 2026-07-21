@@ -5857,6 +5857,70 @@ type StaffCategory = {
 
 
 function AdminAnalyticsDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [completedCount, setCompletedQuests] = useState(0);
+  const [categories, setCategories] = useState<{name: string; pct: number; color: string}[]>([]);
+  const [trustStats, setTrustStats] = useState<{label: string; pct: number; emoji: string; color: string; h: string}[]>([]);
+
+  useEffect(() => {
+    async function loadData() {
+      const [{ data: tasks }, { data: profiles }] = await Promise.all([
+        supabase.from("tasks").select("status, category:categories(name)"),
+        supabase.from("profiles").select("trust_factor")
+      ]);
+
+      if (tasks) {
+        const completed = tasks.filter(t => t.status === "completed").length;
+        setCompletedQuests(completed);
+
+        const catCounts: Record<string, number> = {};
+        let totalCats = 0;
+        tasks.forEach(t => {
+          // @ts-ignore
+          const catName = t.category?.name || "Uncategorized";
+          catCounts[catName] = (catCounts[catName] || 0) + 1;
+          totalCats++;
+        });
+        
+        const colors = ['#3b82f6', '#a855f7', '#22c55e', '#f97316', '#ef4444', '#0ea5e9', '#eab308'];
+        const sortedCats = Object.entries(catCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([name, count], i) => ({
+            name,
+            pct: totalCats > 0 ? Math.round((count / totalCats) * 100) : 0,
+            color: colors[i % colors.length]
+          }));
+        setCategories(sortedCats);
+      }
+
+      if (profiles) {
+        let bronze=0, silver=0, gold=0, plat=0, cert=0;
+        profiles.forEach(p => {
+          const score = p.trust_factor || 0;
+          if (score < 70) bronze++;
+          else if (score < 85) silver++;
+          else if (score < 93) gold++;
+          else if (score < 98) plat++;
+          else cert++;
+        });
+        const total = profiles.length || 1;
+        
+        const getH = (v: number) => Math.max(5, Math.round((v/total)*100)) + '%';
+        
+        setTrustStats([
+          { label: 'Bronze', pct: Math.round((bronze/total)*100), emoji: '🥉', color: '#b45309', h: getH(bronze) },
+          { label: 'Silver', pct: Math.round((silver/total)*100), emoji: '🥈', color: '#94a3b8', h: getH(silver) },
+          { label: 'Gold', pct: Math.round((gold/total)*100), emoji: '🥇', color: '#eab308', h: getH(gold) },
+          { label: 'Platinum', pct: Math.round((plat/total)*100), emoji: '💎', color: '#e2e8f0', h: getH(plat) },
+          { label: 'Certified', pct: Math.round((cert/total)*100), emoji: '👑', color: '#3b82f6', h: getH(cert) }
+        ]);
+      }
+      setLoading(false);
+    }
+    loadData();
+  }, []);
+
   const revBars = [
     { label: 'Jul 1', h: '30%', active: false },
     { label: '', h: '45%', active: false },
@@ -5872,12 +5936,14 @@ function AdminAnalyticsDashboard() {
     { label: 'Jul 30', h: '95%', active: true }
   ];
 
+  if (loading) return <div className="admin-analytics-wrapper" style={{ minHeight: 400, display: 'grid', placeItems: 'center' }}>Loading Live Analytics...</div>;
+
   return (
     <div className="admin-analytics-wrapper">
       <div className="analytics-card">
-        <h3 className="analytics-card-title">Completed Quests (July 2024)</h3>
-        <h2 className="rev-amount" style={{ color: '#60a5fa' }}>1,428</h2>
-        <div className="rev-trend">▲ 18% vs last month</div>
+        <h3 className="analytics-card-title">Completed Quests (All Time)</h3>
+        <h2 className="rev-amount" style={{ color: '#60a5fa' }}>{completedCount}</h2>
+        <div className="rev-trend">Live Platform Data</div>
         
         <div className="rev-bars-container">
           {revBars.map((bar, i) => (
@@ -5885,88 +5951,37 @@ function AdminAnalyticsDashboard() {
           ))}
         </div>
         <div className="rev-labels">
-          <span>Jul 1</span>
-          <span style={{ paddingLeft: '5%' }}>Jul 15</span>
-          <span>Jul 30</span>
+          <span>{new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
+          <span>{new Date().toLocaleDateString()}</span>
         </div>
       </div>
 
       <div className="analytics-card">
         <h3 className="analytics-card-title">Tasks by Category</h3>
-        
-        <div className="category-row">
-          <div className="category-name">Tech & Dev</div>
-          <div className="category-track">
-            <div className="category-fill" style={{ width: '32%', background: '#3b82f6' }}></div>
+        {categories.length > 0 ? categories.map((cat, i) => (
+          <div className="category-row" key={i}>
+            <div className="category-name">{cat.name}</div>
+            <div className="category-track">
+              <div className="category-fill" style={{ width: `${cat.pct}%`, background: cat.color }}></div>
+            </div>
+            <div className="category-pct" style={{ color: cat.color }}>{cat.pct}%</div>
           </div>
-          <div className="category-pct" style={{ color: '#3b82f6' }}>32%</div>
-        </div>
-        
-        <div className="category-row">
-          <div className="category-name">Design</div>
-          <div className="category-track">
-            <div className="category-fill" style={{ width: '21%', background: '#a855f7' }}></div>
-          </div>
-          <div className="category-pct" style={{ color: '#a855f7' }}>21%</div>
-        </div>
-        
-        <div className="category-row">
-          <div className="category-name">Education</div>
-          <div className="category-track">
-            <div className="category-fill" style={{ width: '18%', background: '#22c55e' }}></div>
-          </div>
-          <div className="category-pct" style={{ color: '#22c55e' }}>18%</div>
-        </div>
-        
-        <div className="category-row">
-          <div className="category-name">Home & Repairs</div>
-          <div className="category-track">
-            <div className="category-fill" style={{ width: '14%', background: '#f97316' }}></div>
-          </div>
-          <div className="category-pct" style={{ color: '#f97316' }}>14%</div>
-        </div>
-
-        <div className="category-row">
-          <div className="category-name">Photography</div>
-          <div className="category-track">
-            <div className="category-fill" style={{ width: '15%', background: '#ef4444' }}></div>
-          </div>
-          <div className="category-pct" style={{ color: '#ef4444' }}>15%</div>
-        </div>
+        )) : <div style={{ color: '#63769c', fontSize: 13, marginTop: 10 }}>No tasks found.</div>}
       </div>
 
       <div className="analytics-card">
         <h3 className="analytics-card-title">Trust Factor Distribution</h3>
         <div className="trust-container">
-          <div className="trust-col">
-            <div className="trust-pct">45%</div>
-            <div className="trust-bar" style={{ height: '100%', background: '#b45309' }}></div>
-            <div className="trust-label">Bronze</div>
-          </div>
-          
-          <div className="trust-col">
-            <div className="trust-pct">28%</div>
-            <div className="trust-bar" style={{ height: '62%', background: '#94a3b8' }}></div>
-            <div className="trust-label">Silver</div>
-          </div>
-          
-          <div className="trust-col">
-            <div className="trust-pct">18%</div>
-            <div className="trust-bar" style={{ height: '40%', background: '#eab308' }}></div>
-            <div className="trust-label">Gold</div>
-          </div>
-          
-          <div className="trust-col">
-            <div className="trust-pct">7%</div>
-            <div className="trust-bar" style={{ height: '15%', background: '#e2e8f0' }}></div>
-            <div className="trust-label">Platinum</div>
-          </div>
-          
-          <div className="trust-col">
-            <div className="trust-pct" style={{ color: '#3b82f6' }}>2%</div>
-            <div className="trust-bar" style={{ height: '5%', background: '#3b82f6' }}></div>
-            <div className="trust-label">Certified</div>
-          </div>
+          {trustStats.map((stat, i) => (
+            <div className="trust-col" key={i}>
+              <div className="trust-pct" style={{ color: stat.color === '#e2e8f0' ? '#94a3b8' : stat.color }}>{stat.pct}%</div>
+              <div className="trust-bar" style={{ height: stat.h, background: stat.color }}></div>
+              <div className="trust-label">
+                <span style={{ fontSize: 18, display: 'block', marginBottom: 4 }}>{stat.emoji}</span>
+                {stat.label}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
