@@ -4779,7 +4779,15 @@ function FreshAccount({
       <div className="fresh-grid">
         <section className="panel">
           <h3>Trust and service record</h3>
-          <div className="fresh-stats">
+          <div className="fresh-stats" style={{ position: 'relative' }}>
+            <button 
+              className="btn" 
+              type="button"
+              style={{ position: 'absolute', top: '-40px', right: '0', fontSize: '11px', padding: '4px 10px', backgroundColor: '#fff', border: '1px solid #cdd8ea', color: '#12255c', borderRadius: '12px', cursor: 'pointer' }}
+              onClick={() => setShowTrustHistory(true)}
+            >
+              View History
+            </button>
             <div>
               <strong style={{ color: trustRank.color }}>
                 {trustScore}
@@ -4802,6 +4810,9 @@ function FreshAccount({
             </div>
           </div>
         </section>
+        {showTrustHistory && (
+          <TrustHistoryModal onClose={() => setShowTrustHistory(false)} />
+        )}
         <section className="panel">
           <h3>Account details</h3>
           <div className="account-details">
