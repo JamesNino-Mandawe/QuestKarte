@@ -7919,10 +7919,11 @@ function TaskWorkspace({
       task.status === "assigned" || task.status === "in_progress";
     const notReviewed = isCompleted && !reviewedIds.includes(task.id);
     const isFullyCompleted = isCompleted && fullyReviewedTaskIds.includes(task.id);
+    const isOfficiallyFinished = isFullyCompleted && (task.is_service_swap || task.payment_status === 'paid');
     const tfDelta = tfDeltas[task.id];
     return (
       <article className="task-lifecycle-card" style={{ position: 'relative', overflow: 'hidden' }}>
-        {isFullyCompleted && (
+        {isOfficiallyFinished && (
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', fontSize: 'clamp(40px, 8vw, 72px)', fontWeight: 900, color: 'rgba(220, 38, 38, 0.15)', border: '6px solid rgba(220, 38, 38, 0.15)', borderRadius: 12, padding: '10px 40px', letterSpacing: 4, whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none', zIndex: 10 }}>
             OFFICIALLY FINISHED
           </div>
@@ -7931,7 +7932,7 @@ function TaskWorkspace({
           <div className="tlc-header-left">
             <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {task.title}
-              {isFullyCompleted && (
+              {isOfficiallyFinished && (
                 <button
                   type="button"
                   className="btn"
@@ -7966,7 +7967,7 @@ function TaskWorkspace({
           </span>
         </div>
         <div className="tlc-body">
-          <TaskTimeline stages={tlStages(task, isFullyCompleted)} />
+          <TaskTimeline stages={tlStages(task, isOfficiallyFinished)} />
 
           {/* Ongoing: chat link */}
           {isOngoing && task.assigned_to && (
@@ -8197,10 +8198,11 @@ function TaskWorkspace({
     const isAssigned = task.status === "assigned";
     const notReviewed = isCompleted && !reviewedIds.includes(task.id);
     const isFullyCompleted = isCompleted && fullyReviewedTaskIds.includes(task.id);
+    const isOfficiallyFinished = isFullyCompleted && (task.is_service_swap || task.payment_status === 'paid');
     const tfDelta = tfDeltas[task.id];
     return (
       <article className="task-lifecycle-card" style={{ position: 'relative', overflow: 'hidden' }}>
-        {isAccepted && isFullyCompleted && (
+        {isAccepted && isOfficiallyFinished && (
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', fontSize: 'clamp(40px, 8vw, 72px)', fontWeight: 900, color: 'rgba(220, 38, 38, 0.15)', border: '6px solid rgba(220, 38, 38, 0.15)', borderRadius: 12, padding: '10px 40px', letterSpacing: 4, whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none', zIndex: 10 }}>
             OFFICIALLY FINISHED
           </div>
@@ -8209,7 +8211,7 @@ function TaskWorkspace({
           <div className="tlc-header-left">
             <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {task.title}
-              {isFullyCompleted && (
+              {isOfficiallyFinished && (
                 <button
                   type="button"
                   className="btn"
@@ -8252,7 +8254,7 @@ function TaskWorkspace({
           )}
         </div>
         <div className="tlc-body">
-          {isAccepted && <TaskTimeline stages={tlStages(task, isFullyCompleted)} />}
+          {isAccepted && <TaskTimeline stages={tlStages(task, isOfficiallyFinished)} />}
 
           {/* Ready to start */}
           {isAccepted && isAssigned && (
@@ -10252,15 +10254,12 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
   const fetchAddress = async (lat: number, lng: number) => {
     if (!setLocationLabel) return;
     try {
-      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
       const data = await res.json();
-      if (data) {
-         const parts = [data.locality, data.city, data.principalSubdivision].filter(Boolean);
-         if (parts.length > 0) {
-           setLocationLabel(parts.join(", "));
-         } else if (data.countryName) {
-           setLocationLabel(data.countryName);
-         }
+      if (data && data.display_name) {
+         // Nominatim returns highly specific addresses. We take the first 3 parts to be specific without being overly long.
+         const parts = data.display_name.split(', ').slice(0, 3);
+         setLocationLabel(parts.join(', '));
       }
     } catch (err) {
       console.error(err);
