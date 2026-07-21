@@ -9857,6 +9857,21 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
     return null;
   }
 
+  function MapFlyTo() {
+    const map = useMap();
+    useEffect(() => {
+      if (position) map.flyTo(position, 15, { animate: true });
+    }, [position, map]);
+    return null;
+  }
+
+  const customMarker = divIcon({
+    html: `<div style="font-size: 28px; text-align: center; margin-top: -28px; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));">📍</div>`,
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 28]
+  });
+
   return (
     <div style={{ position: 'relative', height: '250px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid #cdd8ea', marginTop: '8px', zIndex: 0 }}>
       <MapContainer center={center} zoom={position ? 14 : 11} scrollWheelZoom={false} style={{ height: '100%', width: '100%', zIndex: 0 }}>
@@ -9865,11 +9880,12 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         <MapClickHandler />
+        <MapFlyTo />
         {position && (
-          <Marker position={position} />
+          <Marker position={position} icon={customMarker} />
         )}
       </MapContainer>
-      <div style={{ position: 'absolute', zIndex: 400, top: '10px', left: '10px', right: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', zIndex: 400, top: '10px', left: '50px', right: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
         <div style={{ background: 'rgba(255,255,255,0.9)', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', color: '#12255c', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'inline-block', backdropFilter: 'blur(4px)' }}>
           {position ? '📍 Location pinned' : 'Tap on the map to place a pin'}
         </div>
