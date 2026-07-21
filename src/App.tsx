@@ -727,7 +727,10 @@ function AppShell({
     };
     void fetchUnread();
     const t = window.setInterval(() => void fetchUnread(), 15000);
-    const handleChatRead = () => void fetchUnread();
+    const handleChatRead = () => {
+      setUnreadChatCount(prev => Math.max(0, prev - 1));
+      setTimeout(() => void fetchUnread(), 2000);
+    };
     window.addEventListener('chat-read', handleChatRead);
     return () => {
       window.clearInterval(t);
@@ -4036,11 +4039,21 @@ function FreshChatReal({
       .eq("conversation_id", convId)
       .eq("user_id", session.user.id);
     
-    // Instantly clear the red dot from this specific chat
-    setConversations(prev => prev.map(c => c.id === convId ? { ...c, isUnread: false } : c));
-    
-    // Dispatch event to clear sidebar red badge
-    window.dispatchEvent(new Event('chat-read'));
+    // Instantly clear the red dot from this specific chat and dispatch global clear if it was unread
+    setConversations(prev => {
+      let dispatched = false;
+      const next = prev.map(c => {
+        if (c.id === convId) {
+          if (c.isUnread && !dispatched) {
+            window.dispatchEvent(new Event('chat-read'));
+            dispatched = true;
+          }
+          return { ...c, isUnread: false };
+        }
+        return c;
+      });
+      return next;
+    });
   };
 
   useEffect(() => {
