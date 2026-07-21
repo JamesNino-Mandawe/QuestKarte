@@ -1767,34 +1767,32 @@ function MarketplaceFeed({ onPost }: { onPost: () => void }) {
         </div>
       ) : tasks.length ? (
         <div className="real-task-list">
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              quest={{
-                id: task.id,
-                category: task.category?.name || "General",
-                title: task.title,
-                description: task.description,
-                commission: task.is_service_swap
-                  ? task.swap_details || "Service swap"
-                  : `${task.currency === "PHP" ? "₱" : ""}${Number(task.commission_amount || 0).toLocaleString()}`,
-                location: task.location_label,
-                schedule: task.published_at
-                  ? `Posted ${new Date(task.published_at).toLocaleDateString()}`
-                  : "Posted recently",
-                posterName: task.poster?.full_name || "QuestKarte member",
-                trust: `Trust Factor ${task.poster?.trust_factor || 0}`,
-                kind: task.is_service_swap
-                  ? "swap"
-                  : task.requires_student_verification
-                    ? "student"
-                    : undefined,
-                initials: (task.poster?.full_name || "M")
-                  .slice(0, 2)
-                  .toUpperCase(),
-              }}
-            />
-          ))}
+          {useMemo(() => {
+          const groups: Record<string, TaskMapPin[]> = {};
+          tasks.forEach((t) => {
+            const key = `${t.latitude.toFixed(4)},${t.longitude.toFixed(4)}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(t);
+          });
+          return Object.values(groups);
+        }, [tasks]).map((group) => {
+          const first = group[0];
+          return (
+            <Marker
+              key={first.id}
+              position={[first.latitude, first.longitude]}
+              icon={group.length > 1 ? groupedMarker(group.length) : taskMarker(first)}
+            >
+              <Popup className="quest-map-task-popup">
+                {group.length > 1 ? (
+                  <GroupedTaskPopup group={group} onApply={onApply} />
+                ) : (
+                  <MapTaskPreview task={first} onApply={onApply ? () => onApply(first.id) : undefined} />
+                )}
+              </Popup>
+            </Marker>
+          );
+        })}
         </div>
       ) : (
         <div className="panel feed-message">
