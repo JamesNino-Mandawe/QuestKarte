@@ -9892,7 +9892,7 @@ function ChatAttachment({ msg, onImageClick }: { msg: any, onImageClick: (url: s
 
   useEffect(() => {
     if (msg.attachment_url && !msg.attachment_url.startsWith('http')) {
-      supabase.storage.from("task-attachments").createSignedUrl(msg.attachment_url, 3600 * 24).then(({ data, error: fetchError }) => {
+      supabase.storage.from("task-attachments").createSignedUrl(msg.attachment_url, 3600 * 24).then(({ data }) => {
         if (data) {
           setUrl(data.signedUrl);
         } else {
