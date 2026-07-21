@@ -707,6 +707,53 @@ function AppShell({
   );
   const [query, setQuery] = useState("");
   const [chatTaskId, setChatTaskId] = useState<string | null>(null);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  useEffect(() => {
+    if (!session) return;
+    const fetchUnread = async () => {
+      const { data } = await supabase
+        .from('conversation_members')
+        .select('last_read_at, conversations:conversations!inner(last_message_at)')
+        .eq('user_id', session.user.id);
+      if (!data) return;
+      let count = 0;
+      for (const row of data) {
+        const conv = Array.isArray(row.conversations) ? row.conversations[0] : row.conversations as any;
+        if (conv?.last_message_at && (!row.last_read_at || new Date(conv.last_message_at) > new Date(row.last_read_at))) count++;
+      }
+      setUnreadChatCount(count);
+    };
+    void fetchUnread();
+    const t = window.setInterval(() => void fetchUnread(), 15000);
+    return () => window.clearInterval(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user.id]);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  // Poll for unread messages in background
+  useEffect(() => {
+    if (!session) return;
+    const fetchUnread = async () => {
+      const { data } = await supabase
+        .from('conversation_members')
+        .select('conversation_id, last_read_at, conversations:conversations(last_message_at)')
+        .eq('user_id', session.user.id);
+      if (!data) return;
+      let count = 0;
+      for (const row of data) {
+        const conv = Array.isArray(row.conversations) ? row.conversations[0] : row.conversations;
+        if (conv?.last_message_at && (!row.last_read_at || new Date(conv.last_message_at) > new Date(row.last_read_at))) {
+          count++;
+        }
+      }
+      setUnreadChatCount(count);
+    };
+    void fetchUnread();
+    const t = window.setInterval(() => void fetchUnread(), 15000);
+    return () => window.clearInterval(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user.id]);
   
   useEffect(() => {
     const handleNav = () => setPage("tasks");
@@ -737,7 +784,8 @@ function AppShell({
           key={item.id}
           item={item}
           active={page === item.id}
-          onClick={() => setPage(item.id)}
+          onClick={() => { setPage(item.id); if (item.id === 'chat') setUnreadChatCount(0); }}
+          badge={item.id === 'chat' && page !== 'chat' ? unreadChatCount : 0}
         />
       ))}
     </>
@@ -4071,27 +4119,33 @@ function FreshChatReal({
     if (!selected) return;
     const file = e.target.files?.[0];
     if (!file) return;
-    setNotice("Uploading attachment...");
-    const path = `${session.user.id}/${selected}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    e.target.value = '';
+    if (file.size > 20 * 1024 * 1024) { setNotice('File too large (max 20MB).'); return; }
+    setNotice('Uploading...');
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf';
+    const isWord = file.type.includes('wordprocessingml') || file.type === 'application/msword';
+    const attachType = isImage ? 'image' : 'document';
+    const ext = file.name.split('.').pop() || 'bin';
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${session.user.id}/${selected}/${crypto.randomUUID()}.${ext}__${safeName}`;
+    const msgBody = isImage ? 'Sent a photo' : isPdf ? 'Sent a PDF' : isWord ? 'Sent a Word document' : `Sent: ${file.name}`;
     const { error: uploadError } = await supabase.storage
-      .from("task-attachments")
-      .upload(path, file);
+      .from('task-attachments')
+      .upload(path, file, { contentType: file.type });
     if (uploadError) {
-      setNotice(uploadError.message);
+      setNotice('Upload failed: ' + uploadError.message);
       return;
     }
-
-    // Removed createSignedUrl since we use getPublicUrl dynamically
-    const type = file.type.startsWith("image/") ? "image" : "file";
-
-    const { error: dbErr } = await supabase.rpc("send_message_safe", {
+    const { error: dbErr } = await supabase.rpc('send_message_safe', {
       p_conversation_id: selected,
-      p_body: "Sent an attachment",
+      p_body: msgBody,
       p_attachment_url: path,
-      p_attachment_type: type,
+      p_attachment_type: attachType,
       p_is_system: false,
     });
-    setNotice(dbErr ? dbErr.message : "");
+    setNotice(dbErr ? dbErr.message : '');
+    if (!dbErr) void loadMessages(selected);
   };
 
   if (!conversations.length)
@@ -6922,13 +6976,20 @@ const RailItem = ({
   item,
   active,
   onClick,
+  badge,
 }: {
   item: (typeof nav)[number];
   active: boolean;
   onClick: () => void;
+  badge?: number;
 }) => (
-  <button className={`rail-item ${active ? "active" : ""}`} onClick={onClick}>
-    <span>{item.icon}</span>
+  <button className={`rail-item ${active ? "active" : ""}`} onClick={onClick} style={{ position: 'relative' }}>
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      {item.icon}
+      {badge && badge > 0 ? (
+        <span style={{ position: 'absolute', top: -6, right: -8, background: '#e53935', color: '#fff', fontSize: 9, fontWeight: 700, minWidth: 15, height: 15, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px', lineHeight: 1, boxShadow: '0 0 0 2px #1a2340' }}>{badge > 99 ? '99+' : badge}</span>
+      ) : null}
+    </span>
     <small>{item.label}</small>
   </button>
 );
@@ -8387,6 +8448,11 @@ function NotificationBell({ userId }: { userId: string }) {
     await load();
   };
 
+  const markOneRead = async (id: string) => {
+    setItems((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
+    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+  };
+
   const toggle = () => {
     setOpen(!open);
     if (!open) void load(); // Refresh on open
@@ -8425,6 +8491,8 @@ function NotificationBell({ userId }: { userId: string }) {
           <article
             key={item.id}
             className={`notification-item ${item.is_read ? "read" : "unread"}`}
+            style={{ cursor: item.is_read ? 'default' : 'pointer', display: 'flex', alignItems: 'flex-start', gap: 8 }}
+            onClick={() => { if (!item.is_read) void markOneRead(item.id); }}
           >
             {!item.is_read && <div className="unread-dot"></div>}
             <div className="notification-content">
@@ -8437,6 +8505,9 @@ function NotificationBell({ userId }: { userId: string }) {
                 })}
               </small>
             </div>
+            {!item.is_read && (
+              <button type="button" onClick={(e) => { e.stopPropagation(); void markOneRead(item.id); }} style={{ background: 'rgba(70,214,163,0.15)', border: '1px solid rgba(70,214,163,0.4)', color: '#46d6a3', borderRadius: 6, fontSize: 10, padding: '3px 7px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, marginTop: 2 }}>✓ Read</button>
+            )}
           </article>
         ))}
       </div>
@@ -10064,6 +10135,61 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
 }
 
 function ChatAttachment({ msg, onImageClick }: { msg: any, onImageClick: (url: string) => void }) {
+  const rawUrl: string | null = msg.attachment_url;
+  const [url, setUrl] = useState<string | null>(rawUrl?.startsWith('http') ? rawUrl : null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!rawUrl || rawUrl.startsWith('http')) return;
+    supabase.storage.from('task-attachments').createSignedUrl(rawUrl, 3600 * 24).then(({ data, error: signErr }) => {
+      if (data?.signedUrl) {
+        setUrl(data.signedUrl);
+      } else {
+        console.warn('Attachment sign error:', signErr?.message);
+        const { data: pub } = supabase.storage.from('task-attachments').getPublicUrl(rawUrl);
+        if (pub?.publicUrl) setUrl(pub.publicUrl);
+        else setError(true);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawUrl]);
+
+  if (error) return <div style={{ fontSize: 11, color: '#e53935', padding: '6px 10px', background: 'rgba(229,57,53,0.1)', borderRadius: 6, border: '1px solid rgba(229,57,53,0.3)' }}>Attachment unavailable</div>;
+  if (!url) return <div style={{ fontSize: 11, color: '#aaa', fontStyle: 'italic', padding: '4px 8px' }}>Loading...</div>;
+
+  const type = msg.attachment_type as string;
+
+  if (type === 'image') {
+    return (
+      <img
+        src={url}
+        alt="Attachment"
+        className="msg-attachment-img"
+        onClick={() => onImageClick(url)}
+        style={{ cursor: 'zoom-in', display: 'block', maxWidth: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 8 }}
+      />
+    );
+  }
+
+  const rawName = (rawUrl || '').split('/').pop() || 'file';
+  const parts = rawName.split('__');
+  const displayName = parts.length > 1 ? parts.slice(1).join('__').replace(/_/g, ' ') : rawName;
+  const icon = type === 'document' ? '\u{1F4C4}' : '\u{1F4CE}';
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="msg-attachment-file"
+      style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.12)', padding: '8px 12px', borderRadius: 8, color: '#e0eaff', textDecoration: 'none', fontWeight: 600, fontSize: 12, border: '1px solid rgba(255,255,255,0.25)', maxWidth: 220 }}
+    >
+      <span style={{ fontSize: 18 }}>{icon}</span>
+      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+      <span style={{ fontSize: 10, opacity: 0.6 }}>&#8595;</span>
+    </a>
+  );
+}: { msg: any, onImageClick: (url: string) => void }) {
   const [url, setUrl] = useState<string | null>(msg.attachment_url?.startsWith('http') ? msg.attachment_url : null);
   const [error, setError] = useState(false);
 
