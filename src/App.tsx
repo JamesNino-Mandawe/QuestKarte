@@ -9641,7 +9641,7 @@ function PostTaskReal({
               onChange={(event) => setLocation(event.target.value)}
               placeholder="Area description (e.g. Lahug, Cebu City)"
             />
-            <LocationPickerMap position={pinCoords} setPosition={setPinCoords} />
+            <LocationPickerMap position={pinCoords} setPosition={setPinCoords} setLocationLabel={setLocation} />
           </div>
         </div>
         <label className="upload-box photo-dropzone">
@@ -9830,8 +9830,30 @@ function TrustHistoryModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function LocationPickerMap({ position, setPosition }: { position: [number, number] | null, setPosition: (pos: [number, number]) => void }) {
+function LocationPickerMap({ position, setPosition, setLocationLabel }: { position: [number, number] | null, setPosition: (pos: [number, number]) => void, setLocationLabel?: (l: string) => void }) {
+  const [loadingLoc, setLoadingLoc] = useState(false);
   const center: [number, number] = position || [10.3157, 123.8854];
+
+  const locateMe = () => {
+    if (!navigator.geolocation) return;
+    setLoadingLoc(true);
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      setPosition([lat, lng]);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        const data = await res.json();
+        if (data && data.display_name && setLocationLabel) {
+           const parts = data.display_name.split(", ");
+           setLocationLabel(parts.slice(0, 3).join(", "));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      setLoadingLoc(false);
+    }, () => setLoadingLoc(false));
+  };
 
   function MapClickHandler() {
     useMapEvents({
@@ -9843,7 +9865,7 @@ function LocationPickerMap({ position, setPosition }: { position: [number, numbe
   }
 
   return (
-    <div style={{ height: '250px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid #cdd8ea', marginTop: '8px', zIndex: 0 }}>
+    <div style={{ position: 'relative', height: '250px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid #cdd8ea', marginTop: '8px', zIndex: 0 }}>
       <MapContainer center={center} zoom={position ? 14 : 11} scrollWheelZoom={false} style={{ height: '100%', width: '100%', zIndex: 0 }}>
         <TileLayer
           attribution='&copy; OpenStreetMap'
@@ -9854,10 +9876,18 @@ function LocationPickerMap({ position, setPosition }: { position: [number, numbe
           <Marker position={position} />
         )}
       </MapContainer>
-      <div style={{ position: 'absolute', zIndex: 400, top: '10px', left: '10px', right: '10px', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', zIndex: 400, top: '10px', left: '10px', right: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
         <div style={{ background: 'rgba(255,255,255,0.9)', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', color: '#12255c', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'inline-block', backdropFilter: 'blur(4px)' }}>
           {position ? '📍 Location pinned' : 'Tap on the map to place a pin'}
         </div>
+        <button 
+          type="button"
+          onClick={locateMe}
+          disabled={loadingLoc}
+          style={{ pointerEvents: 'auto', background: '#12255c', color: 'white', border: 'none', borderRadius: '16px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
+        >
+          {loadingLoc ? 'Locating...' : '🎯 Locate me'}
+        </button>
       </div>
     </div>
   );
