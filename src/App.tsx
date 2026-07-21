@@ -4711,7 +4711,18 @@ function FreshAccount({
         </div>
         <div>
           <span className="eyebrow">Member profile</span>
-          <h2>{displayName}</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {displayName}
+            {visible?.id && (
+              <span 
+                style={{ fontSize: 13, color: '#7a8daa', fontWeight: 'normal', cursor: 'pointer', background: '#f1f5f9', padding: '4px 8px', borderRadius: 12 }} 
+                title="Click to copy User ID"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigator.clipboard.writeText(visible.id); alert('User ID copied to clipboard!'); }}
+              >
+                ID: {visible.id.split('-')[0]}...
+              </span>
+            )}
+          </h2>
           <p>
             {visible?.bio ||
               "Add a short introduction so other members understand what you can offer."}
