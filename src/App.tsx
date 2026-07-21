@@ -232,7 +232,6 @@ function LegacyAppShell({
     staffRole === "admin"
       ? [
           { id: "overview", label: "Overview", icon: "◈" },
-          { id: "task_review", label: "Task review", icon: "✓" },
           { id: "members", label: "Members", icon: "◉" },
           { id: "moderators", label: "Moderators", icon: "♜" },
           { id: "categories", label: "Categories", icon: "◇" },
@@ -6439,27 +6438,6 @@ function StaffWorkspace({
                 <small style={{ marginTop: 12, display: 'block', color: '#74819c' }}>Requires a decision</small>
               </div>
             </section>
-          <section className="panel staff-queue">
-            <div className="panel-title-row">
-              <div>
-                <h3>Platform review queue</h3>
-                <p>
-                  Monitor the most important operational work across QuestKarte.
-                </p>
-              </div>
-              <button className="btn" onClick={() => selectTab("task_review")}>
-                Review tasks
-              </button>
-            </div>
-            <div className="staff-summary-list">
-              <span>{tasks.length} task submissions awaiting review</span>
-              <span>
-                {verifications.length} verification requests awaiting review
-              </span>
-              <span>
-                {reports.length + disputes.length} active safety cases
-              </span>
-            </div>
           </section>
         </div>
       );
