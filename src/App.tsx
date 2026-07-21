@@ -3087,6 +3087,14 @@ type TaskMapPin = {
   posterTrust?: number;
   images?: string[];
 };
+function groupedMarker(count: number) {
+  return divIcon({
+    className: "pulsing-marker-wrapper",
+    html: `<span class="task-map-marker group elite-pulse" title="${count} tasks here">${count}</span>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+}
 function taskMarker(task: TaskMapPin) {
   const label = task.title.toLowerCase();
   const [symbol, category] =
@@ -3106,6 +3114,20 @@ function taskMarker(task: TaskMapPin) {
     iconAnchor: [18, 18],
   });
 }
+function GroupedTaskPopup({ group, onApply }: { group: TaskMapPin[], onApply?: (id: string) => void }) {
+  const [index, setIndex] = useState(0);
+  return (
+    <div className="grouped-task-popup">
+      <MapTaskPreview task={group[index]} onApply={onApply ? () => onApply(group[index].id) : undefined} />
+      <div className="grouped-task-nav">
+        <button disabled={index === 0} onClick={() => setIndex(i => i - 1)}>← Prev</button>
+        <span>{index + 1} of {group.length}</span>
+        <button disabled={index === group.length - 1} onClick={() => setIndex(i => i + 1)}>Next →</button>
+      </div>
+    </div>
+  );
+}
+
 function MapTaskPreview({ task, onApply }: { task: TaskMapPin, onApply?: () => void }) {
   const reward = task.is_service_swap
     ? task.swap_details || "Service swap"
