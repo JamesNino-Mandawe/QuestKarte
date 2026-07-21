@@ -7780,7 +7780,7 @@ function TaskWorkspace({
           <div className="tlc-header-left">
             <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {task.title}
-              {task.status === "completed" && (task.payment_status === "paid" || task.payment_type === "gcash") && isFullyCompleted && (
+              {task.status === "completed" && ((task.payment_status === "paid" || task.payment_type === "gcash") || task.is_service_swap) && isFullyCompleted && (
                 <button
                   type="button"
                   className="btn"
@@ -7815,7 +7815,7 @@ function TaskWorkspace({
           </span>
         </div>
         <div className="tlc-body">
-          {(task.payment_status === "paid" || task.payment_type === "gcash") && isFullyCompleted ? (
+          {((task.payment_status === "paid" || task.payment_type === "gcash") || task.is_service_swap) && isFullyCompleted ? (
             <div style={{ position: 'relative', overflow: 'hidden', padding: 20, borderRadius: 12, background: 'rgba(21,155,120,0.05)', border: '1px solid rgba(21,155,120,0.2)', marginBottom: 16 }}>
               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', fontSize: 64, fontWeight: 900, color: 'rgba(21,155,120,0.08)', whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none' }}>
                 OFFICIALLY FINISHED
@@ -8066,7 +8066,7 @@ function TaskWorkspace({
           <div className="tlc-header-left">
             <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {task.title}
-              {task.status === "completed" && (task.payment_status === "paid" || task.payment_type === "gcash") && isFullyCompleted && (
+              {task.status === "completed" && ((task.payment_status === "paid" || task.payment_type === "gcash") || task.is_service_swap) && isFullyCompleted && (
                 <button
                   type="button"
                   className="btn"
@@ -8109,7 +8109,20 @@ function TaskWorkspace({
           )}
         </div>
         <div className="tlc-body">
-          {isAccepted && <TaskTimeline stages={tlStages(task, isFullyCompleted)} />}
+          {isAccepted && ((task.payment_status === "paid" || task.payment_type === "gcash") || task.is_service_swap) && isFullyCompleted ? (
+            <div style={{ position: 'relative', overflow: 'hidden', padding: 20, borderRadius: 12, background: 'rgba(21,155,120,0.05)', border: '1px solid rgba(21,155,120,0.2)', marginBottom: 16 }}>
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', fontSize: 64, fontWeight: 900, color: 'rgba(21,155,120,0.08)', whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none' }}>
+                OFFICIALLY FINISHED
+              </div>
+              <h4 style={{ margin: '0 0 8px 0', color: '#159b78', position: 'relative' }}>Task Officially Finished</h4>
+              <p style={{ margin: 0, fontSize: 13, color: '#4a5568', position: 'relative' }}>
+                The task <strong>{task.title}</strong> has been fully completed and {task.is_service_swap ? 'the swap has been finalized' : 'payment has been exchanged'}. 
+                You can now delete this task from your history using the button above.
+              </p>
+            </div>
+          ) : isAccepted ? (
+            <TaskTimeline stages={tlStages(task, isFullyCompleted)} />
+          ) : null}
 
           {/* Ready to start */}
           {isAccepted && isAssigned && (
