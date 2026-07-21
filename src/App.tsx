@@ -10188,7 +10188,15 @@ function TrustHistoryModal({ onClose }: { onClose: () => void }) {
 
 function LocationPickerMap({ position, setPosition, setLocationLabel }: { position: [number, number] | null, setPosition: (pos: [number, number]) => void, setLocationLabel?: (l: string) => void }) {
   const [loadingLoc, setLoadingLoc] = useState(false);
+  const [mapRef, setMapRef] = useState<any>(null);
   const center: [number, number] = position || [10.3157, 123.8854];
+
+  const pinHere = () => {
+    if (mapRef) {
+      const c = mapRef.getCenter();
+      setPosition([c.lat, c.lng]);
+    }
+  };
 
   const locateMe = () => {
     if (!navigator.geolocation) return;
@@ -10237,7 +10245,7 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
 
   return (
     <div style={{ position: 'relative', height: '250px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1px solid #cdd8ea', marginTop: '8px', zIndex: 0 }}>
-      <MapContainer center={center} zoom={position ? 14 : 11} scrollWheelZoom={false} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+      <MapContainer ref={setMapRef} center={center} zoom={position ? 14 : 11} scrollWheelZoom={false} style={{ height: '100%', width: '100%', zIndex: 0 }}>
         <TileLayer
           attribution='&copy; OpenStreetMap'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -10245,21 +10253,41 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
         <MapClickHandler />
         <MapFlyTo />
         {position && (
-          <Marker position={position} icon={customMarker} />
+          <Marker 
+            position={position} 
+            icon={customMarker} 
+            draggable={true}
+            eventHandlers={{
+              dragend: (e) => {
+                const marker = e.target;
+                const pos = marker.getLatLng();
+                setPosition([pos.lat, pos.lng]);
+              }
+            }}
+          />
         )}
       </MapContainer>
-      <div style={{ position: 'absolute', zIndex: 400, top: '10px', left: '50px', right: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
-        <div style={{ background: 'rgba(255,255,255,0.9)', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', color: '#12255c', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'inline-block', backdropFilter: 'blur(4px)' }}>
-          {position ? '📍 Location pinned' : 'Tap on the map to place a pin'}
+      <div style={{ position: 'absolute', zIndex: 400, top: '10px', left: '10px', right: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
+        <div style={{ background: 'rgba(255,255,255,0.9)', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', color: '#12255c', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'inline-block', backdropFilter: 'blur(4px)', maxWidth: '40%' }}>
+          {position ? '📍 Location pinned (drag to move)' : 'Tap or pin here'}
         </div>
-        <button 
-          type="button"
-          onClick={locateMe}
-          disabled={loadingLoc}
-          style={{ pointerEvents: 'auto', background: '#12255c', color: 'white', border: 'none', borderRadius: '16px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
-        >
-          {loadingLoc ? 'Locating...' : '🎯 Locate me'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button 
+            type="button"
+            onClick={pinHere}
+            style={{ pointerEvents: 'auto', background: '#159b78', color: 'white', border: 'none', borderRadius: '16px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
+          >
+            📍 Pin here
+          </button>
+          <button 
+            type="button"
+            onClick={locateMe}
+            disabled={loadingLoc}
+            style={{ pointerEvents: 'auto', background: '#12255c', color: 'white', border: 'none', borderRadius: '16px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
+          >
+            {loadingLoc ? 'Locating...' : '🎯 Locate me'}
+          </button>
+        </div>
       </div>
     </div>
   );
