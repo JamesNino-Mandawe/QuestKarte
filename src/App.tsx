@@ -5856,6 +5856,124 @@ type StaffCategory = {
   is_active: boolean;
 };
 
+
+function AdminAnalyticsDashboard() {
+  const revBars = [
+    { label: 'Jul 1', h: '30%', active: false },
+    { label: '', h: '45%', active: false },
+    { label: '', h: '40%', active: false },
+    { label: '', h: '60%', active: false },
+    { label: '', h: '50%', active: false },
+    { label: 'Jul 15', h: '65%', active: false },
+    { label: '', h: '55%', active: false },
+    { label: '', h: '70%', active: false },
+    { label: '', h: '48%', active: false },
+    { label: '', h: '55%', active: false },
+    { label: '', h: '68%', active: false },
+    { label: 'Jul 30', h: '95%', active: true }
+  ];
+
+  return (
+    <div className="admin-analytics-wrapper">
+      <div className="analytics-card">
+        <h3 className="analytics-card-title">Platform Revenue (July 2024)</h3>
+        <h2 className="rev-amount">₱42,850</h2>
+        <div className="rev-trend">▲ 18% vs last month</div>
+        
+        <div className="rev-bars-container">
+          {revBars.map((bar, i) => (
+            <div key={i} className={`rev-bar ${bar.active ? 'active' : ''}`} style={{ height: bar.h }}></div>
+          ))}
+        </div>
+        <div className="rev-labels">
+          <span>Jul 1</span>
+          <span style={{ paddingLeft: '5%' }}>Jul 15</span>
+          <span>Jul 30</span>
+        </div>
+      </div>
+
+      <div className="analytics-card">
+        <h3 className="analytics-card-title">Tasks by Category</h3>
+        
+        <div className="category-row">
+          <div className="category-name">Tech & Dev</div>
+          <div className="category-track">
+            <div className="category-fill" style={{ width: '32%', background: '#3b82f6' }}></div>
+          </div>
+          <div className="category-pct" style={{ color: '#3b82f6' }}>32%</div>
+        </div>
+        
+        <div className="category-row">
+          <div className="category-name">Design</div>
+          <div className="category-track">
+            <div className="category-fill" style={{ width: '21%', background: '#a855f7' }}></div>
+          </div>
+          <div className="category-pct" style={{ color: '#a855f7' }}>21%</div>
+        </div>
+        
+        <div className="category-row">
+          <div className="category-name">Education</div>
+          <div className="category-track">
+            <div className="category-fill" style={{ width: '18%', background: '#22c55e' }}></div>
+          </div>
+          <div className="category-pct" style={{ color: '#22c55e' }}>18%</div>
+        </div>
+        
+        <div className="category-row">
+          <div className="category-name">Home & Repairs</div>
+          <div className="category-track">
+            <div className="category-fill" style={{ width: '14%', background: '#f97316' }}></div>
+          </div>
+          <div className="category-pct" style={{ color: '#f97316' }}>14%</div>
+        </div>
+
+        <div className="category-row">
+          <div className="category-name">Photography</div>
+          <div className="category-track">
+            <div className="category-fill" style={{ width: '15%', background: '#ef4444' }}></div>
+          </div>
+          <div className="category-pct" style={{ color: '#ef4444' }}>15%</div>
+        </div>
+      </div>
+
+      <div className="analytics-card">
+        <h3 className="analytics-card-title">Trust Factor Distribution</h3>
+        <div className="trust-container">
+          <div className="trust-col">
+            <div className="trust-pct">45%</div>
+            <div className="trust-bar" style={{ height: '100%', background: '#b45309' }}></div>
+            <div className="trust-label">Bronze</div>
+          </div>
+          
+          <div className="trust-col">
+            <div className="trust-pct">28%</div>
+            <div className="trust-bar" style={{ height: '62%', background: '#94a3b8' }}></div>
+            <div className="trust-label">Silver</div>
+          </div>
+          
+          <div className="trust-col">
+            <div className="trust-pct">18%</div>
+            <div className="trust-bar" style={{ height: '40%', background: '#eab308' }}></div>
+            <div className="trust-label">Gold</div>
+          </div>
+          
+          <div className="trust-col">
+            <div className="trust-pct">7%</div>
+            <div className="trust-bar" style={{ height: '15%', background: '#e2e8f0' }}></div>
+            <div className="trust-label">Platinum</div>
+          </div>
+          
+          <div className="trust-col">
+            <div className="trust-pct" style={{ color: '#3b82f6' }}>2%</div>
+            <div className="trust-bar" style={{ height: '5%', background: '#3b82f6' }}></div>
+            <div className="trust-label">Certified</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StaffWorkspace({
   role,
   session,
