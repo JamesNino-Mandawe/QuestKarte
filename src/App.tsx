@@ -4178,23 +4178,8 @@ function FreshChatReal({
                     key={msg.id}
                   >
                     <div className="msg-bubble">
-                      {msg.attachment_url &&
-                        msg.attachment_type === "image" && (
-                          <img
-                            src={msg.attachment_url.startsWith('http') ? msg.attachment_url : supabase.storage.from("task-attachments").getPublicUrl(msg.attachment_url).data.publicUrl}
-                            alt="Attachment"
-                            className="msg-attachment-img"
-                          />
-                        )}
-                      {msg.attachment_url && msg.attachment_type === "file" && (
-                        <a
-                          href={msg.attachment_url.startsWith('http') ? msg.attachment_url : supabase.storage.from("task-attachments").getPublicUrl(msg.attachment_url).data.publicUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="msg-attachment-file"
-                        >
-                          📄 View Attachment
-                        </a>
+                      {msg.attachment_url && (
+                        <ChatAttachment msg={msg} onImageClick={setEnlargedImage} />
                       )}
                       <div className="msg-text">{msg.body}</div>
                       <div className="msg-meta">
@@ -9907,7 +9892,7 @@ function ChatAttachment({ msg, onImageClick }: { msg: any, onImageClick: (url: s
 
   useEffect(() => {
     if (msg.attachment_url && !msg.attachment_url.startsWith('http')) {
-      supabase.storage.from("task-attachments").createSignedUrl(msg.attachment_url, 3600 * 24).then(({ data, error }) => {
+      supabase.storage.from("task-attachments").createSignedUrl(msg.attachment_url, 3600 * 24).then(({ data, error: fetchError }) => {
         if (data) {
           setUrl(data.signedUrl);
         } else {
