@@ -145,10 +145,10 @@ const questImages: Record<string, string> = {
   3: "/task-grocery.png",
 };
 
-const nav: { id: Page; label: string; icon: string }[] = [
+const nav: { id: Page; label: string; icon: any }[] = [
   { id: "home", label: "Home", icon: "⌂" },
   { id: "tasks", label: "Tasks", icon: "✓" },
-  { id: "chat", label: "Chat", icon: "◌" },
+  { id: "chat", label: "Chat", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> },
   { id: "account", label: "Account", icon: "◉" },
 ];
 
@@ -761,8 +761,8 @@ function AppShell({
           key={item.id}
           item={item}
           active={page === item.id}
-          onClick={() => { setPage(item.id); if (item.id === 'chat') setUnreadChatCount(0); }}
-          badge={item.id === 'chat' && page !== 'chat' ? unreadChatCount : 0}
+          onClick={() => { setPage(item.id); }}
+          badge={item.id === 'chat' ? unreadChatCount : 0}
         />
       ))}
     </>
@@ -2377,6 +2377,14 @@ function ApplicationWorkspace({
     }
     setSaving(true);
     setNotice("");
+    
+    // Check if applicant already has an active task
+    const { data: activeTasks } = await supabase.from('tasks').select('id').eq('assigned_to', auth.user.id).in('status', ['assigned', 'in_progress', 'pending_client_review', 'swap_in_progress', 'pending_swap_review']);
+    if (activeTasks && activeTasks.length > 0) {
+       setNotice("You must complete your current ongoing task before you can apply to another one.");
+       setSaving(false);
+       return;
+    }
     const { data: application, error } = await supabase
       .from("applications")
       .insert({
@@ -3828,7 +3836,7 @@ function FreshTasks({
         </section>
       ) : entries.length ? (
         <section className="task-work-list">
-          {tab === "posted" ? posted.filter(task => !task.hidden_by_poster).map((task) => (
+          {tab === "posted" ? posted.filter(task => !task.hidden_by_poster && localStorage.getItem('dismissed-task-' + task.id) !== 'true').map((task) => (
                 <TaskLifecycleCard
                   key={task.id}
                   task={task}
@@ -7792,7 +7800,7 @@ function TaskWorkspace({
               <span className="tlc-reward">{fmtReward(task)}</span>
               <span>·</span>
               <span>
-                {task.payment_type === "gcash" ? "GCash" : "Cash meetup"}
+                {task.is_service_swap ? "Service swap" : task.payment_type === "gcash" ? "GCash" : "Cash meetup"}
               </span>
               {task.deadline_at && (
                 <>
@@ -7998,7 +8006,11 @@ function TaskWorkspace({
           {isCompleted && isFullyCompleted && (
             <>
               <PaymentReceiptCard task={{ ...task, title: task.title }} />
-              {task.payment_type !== 'gcash' && task.payment_status !== 'paid' && (
+              {task.is_service_swap ? (
+                <div style={{ marginTop: 12, padding: 12, background: '#f8f9fa', borderRadius: 8 }}>
+                  <span style={{ fontSize: 13, color: '#4a5568' }}>This is a Service Swap. No cash payment is required. Please leave a review to complete the transaction.</span>
+                </div>
+              ) : task.payment_type !== 'gcash' && task.payment_status !== 'paid' && (
                 <div style={{ marginTop: 12, padding: 12, background: '#f8f9fa', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 13, color: '#4a5568' }}>Confirm when you have paid the provider.</span>
                   {task.payment_status === 'client_paid' ? (
@@ -8074,7 +8086,7 @@ function TaskWorkspace({
               <span className="tlc-reward">{fmtReward(task)}</span>
               <span>·</span>
               <span>
-                {task.payment_type === "gcash" ? "GCash" : "Cash meetup"}
+                {task.is_service_swap ? "Service swap" : task.payment_type === "gcash" ? "GCash" : "Cash meetup"}
               </span>
               {task.deadline_at && (
                 <>
@@ -8305,14 +8317,18 @@ function TaskWorkspace({
           {isAccepted && isCompleted && isFullyCompleted && (
             <>
               <PaymentReceiptCard task={{ ...task, title: task.title }} />
-              {task.payment_type !== 'gcash' && task.payment_status !== 'paid' && (
+              {task.is_service_swap ? (
+                <div style={{ marginTop: 12, padding: 12, background: '#f8f9fa', borderRadius: 8 }}>
+                  <span style={{ fontSize: 13, color: '#4a5568' }}>This is a Service Swap. No cash payment is required. Please leave a review to complete the transaction.</span>
+                </div>
+              ) : task.payment_type !== 'gcash' && task.payment_status !== 'paid' && (
                 <div style={{ marginTop: 12, padding: 12, background: '#f8f9fa', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 13, color: '#4a5568' }}>Confirm when you have received the cash.</span>
+                  <span style={{ fontSize: 13, color: '#4a5568' }}>Wait for the client to hand the cash, then confirm.</span>
                   {task.payment_status === 'provider_paid' ? (
                     <span style={{ fontSize: 12, color: '#159b78', fontWeight: 600 }}>✓ You received (Waiting for client)</span>
                   ) : (
-                    <button onClick={() => void markCashPayment(task.id, 'provider', task.payment_status || '')} className="btn primary" style={{ padding: '6px 12px', fontSize: 12 }}>
-                      Received Payment
+                    <button disabled={task.payment_status !== 'client_paid'} onClick={() => void markCashPayment(task.id, 'provider', task.payment_status || '')} className="btn primary" style={{ padding: '6px 12px', fontSize: 12, opacity: task.payment_status !== 'client_paid' ? 0.5 : 1 }}>
+                      {task.payment_status !== 'client_paid' ? 'Waiting for Client...' : 'Received Payment'}
                     </button>
                   )}
                 </div>
