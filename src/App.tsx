@@ -1387,7 +1387,7 @@ function LegacyProfileSetup({
           <div>
             <span className="setup-label">Services and strengths</span>
             <div className="skill-choices">
-              {skillOptions.map((skill) => (
+              {Array.from(new Set([...skillOptions, ...skills])).map((skill) => (
                 <button
                   type="button"
                   key={skill}
@@ -4641,7 +4641,7 @@ function FreshAccount({
             <div>
               <span className="setup-label">Services and strengths</span>
               <div className="skill-choices">
-                {standardSkills.map((skill) => (
+                {Array.from(new Set([...standardSkills, ...skills])).map((skill) => (
                   <button
                     type="button"
                     key={skill}
