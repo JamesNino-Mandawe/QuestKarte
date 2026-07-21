@@ -7772,19 +7772,19 @@ function TaskWorkspace({
           <div className="tlc-header-left">
             <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {task.title}
-              {task.status === "completed" && (
+              {task.status === "completed" && (task.payment_status === "paid" || task.payment_type === "gcash") && isFullyCompleted && (
                 <button
                   type="button"
                   className="btn"
-                  style={{ fontSize: 11, padding: '4px 8px', background: '#e1f5e8', color: '#159b78', border: '1px solid #c2e6d1', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
+                  style={{ fontSize: 11, padding: '4px 8px', background: '#ffebee', color: '#d32f2f', border: '1px solid #ffcdd2', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
                   onClick={() => {
-                    if (window.confirm('Remove this finished task from your history?')) {
+                    if (window.confirm('Delete this officially finished task from your history?')) {
                       localStorage.setItem('dismissed-task-' + task.id, 'true');
                       window.location.reload();
                     }
                   }}
                 >
-                  Clear History
+                  Delete History
                 </button>
               )}
             </div>
@@ -7819,7 +7819,33 @@ function TaskWorkspace({
               </p>
             </div>
           ) : (
+            {(task.payment_status === "paid" || task.payment_type === "gcash") && isFullyCompleted ? (
+            <div style={{ position: 'relative', overflow: 'hidden', padding: 20, borderRadius: 12, background: 'rgba(21,155,120,0.05)', border: '1px solid rgba(21,155,120,0.2)', marginBottom: 16 }}>
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', fontSize: 64, fontWeight: 900, color: 'rgba(21,155,120,0.08)', whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none' }}>
+                OFFICIALLY FINISHED
+              </div>
+              <h4 style={{ margin: '0 0 8px 0', color: '#159b78', position: 'relative' }}>Task Officially Finished</h4>
+              <p style={{ margin: 0, fontSize: 13, color: '#4a5568', position: 'relative' }}>
+                The task <strong>{task.title}</strong> has been fully completed and payment has been exchanged. 
+                You can now delete this task from your history using the button above.
+              </p>
+            </div>
+          ) : (
+            {(task.payment_status === "paid" || task.payment_type === "gcash") && isFullyCompleted ? (
+            <div style={{ position: 'relative', overflow: 'hidden', padding: 20, borderRadius: 12, background: 'rgba(21,155,120,0.05)', border: '1px solid rgba(21,155,120,0.2)', marginBottom: 16 }}>
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', fontSize: 64, fontWeight: 900, color: 'rgba(21,155,120,0.08)', whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none' }}>
+                OFFICIALLY FINISHED
+              </div>
+              <h4 style={{ margin: '0 0 8px 0', color: '#159b78', position: 'relative' }}>Task Officially Finished</h4>
+              <p style={{ margin: 0, fontSize: 13, color: '#4a5568', position: 'relative' }}>
+                The task <strong>{task.title}</strong> has been fully completed and payment has been exchanged. 
+                You can now delete this task from your history using the button above.
+              </p>
+            </div>
+          ) : (
             <TaskTimeline stages={tlStages(task, isFullyCompleted)} />
+          )}
+          )}
           )}
 
           {/* Ongoing: chat link */}
@@ -7996,7 +8022,21 @@ function TaskWorkspace({
 
           {/* Completed: payment receipt */}
           {isCompleted && isFullyCompleted && (
-            <PaymentReceiptCard task={{ ...task, title: task.title }} />
+            <>
+              <PaymentReceiptCard task={{ ...task, title: task.title }} />
+              {task.payment_type !== 'gcash' && task.payment_status !== 'paid' && (
+                <div style={{ marginTop: 12, padding: 12, background: '#f8f9fa', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, color: '#4a5568' }}>Confirm when you have paid the provider.</span>
+                  {task.payment_status === 'client_paid' ? (
+                    <span style={{ fontSize: 12, color: '#159b78', fontWeight: 600 }}>✓ You paid (Waiting for provider)</span>
+                  ) : (
+                    <button onClick={() => void markCashPayment(task.id, 'client', task.payment_status || '')} className="btn primary" style={{ padding: '6px 12px', fontSize: 12 }}>
+                      I have already handed the payment cash
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           {/* Completed: leave a review */}
@@ -8040,19 +8080,19 @@ function TaskWorkspace({
           <div className="tlc-header-left">
             <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {task.title}
-              {task.status === "completed" && (
+              {task.status === "completed" && (task.payment_status === "paid" || task.payment_type === "gcash") && isFullyCompleted && (
                 <button
                   type="button"
                   className="btn"
-                  style={{ fontSize: 11, padding: '4px 8px', background: '#e1f5e8', color: '#159b78', border: '1px solid #c2e6d1', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
+                  style={{ fontSize: 11, padding: '4px 8px', background: '#ffebee', color: '#d32f2f', border: '1px solid #ffcdd2', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
                   onClick={() => {
-                    if (window.confirm('Remove this finished task from your history?')) {
+                    if (window.confirm('Delete this officially finished task from your history?')) {
                       localStorage.setItem('dismissed-task-' + task.id, 'true');
                       window.location.reload();
                     }
                   }}
                 >
-                  Clear History
+                  Delete History
                 </button>
               )}
             </div>
@@ -8289,7 +8329,21 @@ function TaskWorkspace({
 
           {/* Completed: show payment card */}
           {isAccepted && isCompleted && isFullyCompleted && (
-            <PaymentReceiptCard task={{ ...task, title: task.title }} />
+            <>
+              <PaymentReceiptCard task={{ ...task, title: task.title }} />
+              {task.payment_type !== 'gcash' && task.payment_status !== 'paid' && (
+                <div style={{ marginTop: 12, padding: 12, background: '#f8f9fa', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, color: '#4a5568' }}>Confirm when you have received the cash.</span>
+                  {task.payment_status === 'provider_paid' ? (
+                    <span style={{ fontSize: 12, color: '#159b78', fontWeight: 600 }}>✓ You received (Waiting for client)</span>
+                  ) : (
+                    <button onClick={() => void markCashPayment(task.id, 'provider', task.payment_status || '')} className="btn primary" style={{ padding: '6px 12px', fontSize: 12 }}>
+                      Received Payment
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           {/* Completed: leave a review */}
