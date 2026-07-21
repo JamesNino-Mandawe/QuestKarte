@@ -3199,17 +3199,32 @@ function TaskMap({ position, radius, tasks, full = false, onApply }: { position:
             </CircleMarker>
           </>
         )}
-        {tasks.map((task) => (
-          <Marker
-            key={task.id}
-            position={[task.latitude, task.longitude]}
-            icon={taskMarker(task)}
-          >
-            <Popup className="quest-map-task-popup">
-              <MapTaskPreview task={task} onApply={onApply ? () => onApply(task.id) : undefined} />
-            </Popup>
-          </Marker>
-        ))}
+        {useMemo(() => {
+          const groups: Record<string, TaskMapPin[]> = {};
+          tasks.forEach((t) => {
+            const key = `${t.latitude.toFixed(4)},${t.longitude.toFixed(4)}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(t);
+          });
+          return Object.values(groups);
+        }, [tasks]).map((group) => {
+          const first = group[0];
+          return (
+            <Marker
+              key={first.id}
+              position={[first.latitude, first.longitude]}
+              icon={group.length > 1 ? groupedMarker(group.length) : taskMarker(first)}
+            >
+              <Popup className="quest-map-task-popup">
+                {group.length > 1 ? (
+                  <GroupedTaskPopup group={group} onApply={onApply} />
+                ) : (
+                  <MapTaskPreview task={first} onApply={onApply ? () => onApply(first.id) : undefined} />
+                )}
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );
@@ -4491,6 +4506,7 @@ function FreshAccount({
   const [member, setMember] = useState<MemberProfile | null>(profile);
   const [editing, setEditing] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(false);
+  const [showTrustHistory, setShowTrustHistory] = useState(false);
   const [name, setName] = useState(profile?.full_name || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [city, setCity] = useState(profile?.city || "Cebu City");
@@ -9745,3 +9761,53 @@ function HelpSafetyWidget({ isGuest }: { isGuest?: boolean }) {
 }
 
 export default App;
+
+function TrustHistoryModal({ onClose }: { onClose: () => void }) {
+  const [events, setEvents] = useState<{ id: string, created_at: string, points: number, reason: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from('trust_events')
+      .select('id, created_at, points, reason')
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        setEvents(data || []);
+        setLoading(false);
+      });
+  }, []);
+
+  return (
+    <div className="task-modal-backdrop" onClick={onClose} style={{ zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="task-detail-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="task-modal-header" style={{ marginBottom: 15 }}>
+          <h3 style={{ margin: 0 }}>Trust Factor History</h3>
+          <button onClick={onClose} className="task-modal-close">×</button>
+        </div>
+        
+        <div style={{ overflowY: 'auto', flex: 1, padding: '0 24px 24px' }}>
+          {loading ? (
+            <p>Loading history...</p>
+          ) : events.length === 0 ? (
+            <p style={{ color: '#7a8daa', textAlign: 'center', margin: '20px 0' }}>No history found.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {events.map((ev) => (
+                <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#f7f9fe', borderRadius: 8, border: '1px solid #e1e7f3' }}>
+                  <div>
+                    <strong style={{ display: 'block', fontSize: 13, color: '#12255c', marginBottom: '4px' }}>{ev.reason}</strong>
+                    <span style={{ fontSize: 11, color: '#7a8daa' }}>{new Date(ev.created_at).toLocaleString()}</span>
+                  </div>
+                  <span style={{ fontWeight: 'bold', color: ev.points > 0 ? '#159b78' : ev.points < 0 ? '#d93025' : '#7a8daa', display: 'flex', alignItems: 'center', fontSize: '16px' }}>
+                    {ev.points > 0 ? '+' : ''}{ev.points}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
