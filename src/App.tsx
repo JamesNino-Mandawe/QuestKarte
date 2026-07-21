@@ -7825,7 +7825,12 @@ function TaskWorkspace({
     const isFullyCompleted = isCompleted && fullyReviewedTaskIds.includes(task.id);
     const tfDelta = tfDeltas[task.id];
     return (
-      <article className="task-lifecycle-card">
+      <article className="task-lifecycle-card" style={{ position: 'relative', overflow: 'hidden' }}>
+        {(task.payment_status === "paid" || task.is_service_swap) && isFullyCompleted && (
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', fontSize: 'clamp(40px, 8vw, 72px)', fontWeight: 900, color: 'rgba(220, 38, 38, 0.15)', border: '6px solid rgba(220, 38, 38, 0.15)', borderRadius: 12, padding: '10px 40px', letterSpacing: 4, whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none', zIndex: 10 }}>
+            OFFICIALLY FINISHED
+          </div>
+        )}
         <div className="tlc-header">
           <div className="tlc-header-left">
             <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -7867,9 +7872,7 @@ function TaskWorkspace({
         <div className="tlc-body">
           {(task.payment_status === "paid" || task.is_service_swap) && isFullyCompleted ? (
             <div style={{ position: 'relative', overflow: 'hidden', padding: 20, borderRadius: 12, background: 'rgba(21,155,120,0.05)', border: '1px solid rgba(21,155,120,0.2)', marginBottom: 16 }}>
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', fontSize: 64, fontWeight: 900, color: 'rgba(21,155,120,0.08)', whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none' }}>
-                OFFICIALLY FINISHED
-              </div>
+              
               <h4 style={{ margin: '0 0 8px 0', color: '#159b78', position: 'relative' }}>Task Officially Finished</h4>
               <p style={{ margin: 0, fontSize: 13, color: '#4a5568', position: 'relative' }}>
                 The task <strong>{task.title}</strong> has been fully completed and payment has been exchanged. 
@@ -8111,7 +8114,12 @@ function TaskWorkspace({
     const isFullyCompleted = isCompleted && fullyReviewedTaskIds.includes(task.id);
     const tfDelta = tfDeltas[task.id];
     return (
-      <article className="task-lifecycle-card">
+      <article className="task-lifecycle-card" style={{ position: 'relative', overflow: 'hidden' }}>
+        {isAccepted && (task.payment_status === "paid" || task.is_service_swap) && isFullyCompleted && (
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', fontSize: 'clamp(40px, 8vw, 72px)', fontWeight: 900, color: 'rgba(220, 38, 38, 0.15)', border: '6px solid rgba(220, 38, 38, 0.15)', borderRadius: 12, padding: '10px 40px', letterSpacing: 4, whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none', zIndex: 10 }}>
+            OFFICIALLY FINISHED
+          </div>
+        )}
         <div className="tlc-header">
           <div className="tlc-header-left">
             <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -8161,9 +8169,7 @@ function TaskWorkspace({
         <div className="tlc-body">
           {isAccepted && (task.payment_status === "paid" || task.is_service_swap) && isFullyCompleted ? (
             <div style={{ position: 'relative', overflow: 'hidden', padding: 20, borderRadius: 12, background: 'rgba(21,155,120,0.05)', border: '1px solid rgba(21,155,120,0.2)', marginBottom: 16 }}>
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', fontSize: 64, fontWeight: 900, color: 'rgba(21,155,120,0.08)', whiteSpace: 'nowrap', pointerEvents: 'none', userSelect: 'none' }}>
-                OFFICIALLY FINISHED
-              </div>
+              
               <h4 style={{ margin: '0 0 8px 0', color: '#159b78', position: 'relative' }}>Task Officially Finished</h4>
               <p style={{ margin: 0, fontSize: 13, color: '#4a5568', position: 'relative' }}>
                 The task <strong>{task.title}</strong> has been fully completed and {task.is_service_swap ? 'the swap has been finalized' : 'payment has been exchanged'}. 
