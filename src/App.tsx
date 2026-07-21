@@ -3304,7 +3304,6 @@ type LifecycleTask = {
   is_service_swap: boolean;
   category: { name: string } | null;
   deadline_at: string | null;
-    isOfficiallyFinished?: boolean;
   location_label: string;
   payment_type: string;
   payment_status: string;
@@ -3929,6 +3928,7 @@ function FreshChatReal({
     status: string;
     commission_amount: number | null;
     deadline_at: string | null;
+    isOfficiallyFinished?: boolean;
   };
   type ChatConversation = {
     id: string;
