@@ -7280,6 +7280,7 @@ function PaymentReceiptCard({
       })
     : "—";
   if (!isGcash) {
+    if (task.payment_status === 'paid' || task.is_service_swap) return null;
     return (
       <div className="cash-meetup-card">
         <svg viewBox="0 0 24 24">
@@ -8050,7 +8051,7 @@ function TaskWorkspace({
           )}
 
           {/* Completed: payment receipt */}
-          {isCompleted && isFullyCompleted && (
+          {isCompleted && isFullyCompleted && !(task.payment_status === 'paid' || task.is_service_swap) && (
             <>
               <PaymentReceiptCard task={{ ...task, title: task.title }} />
               {task.is_service_swap ? (
@@ -8374,7 +8375,7 @@ function TaskWorkspace({
           )}
 
           {/* Completed: show payment card */}
-          {isAccepted && isCompleted && isFullyCompleted && (
+          {isAccepted && isCompleted && isFullyCompleted && !(task.payment_status === 'paid' || task.is_service_swap) && (
             <>
               <PaymentReceiptCard task={{ ...task, title: task.title }} />
               {task.is_service_swap ? (
