@@ -9732,8 +9732,6 @@ function PostTaskReal({
     const swapText = swapDetails.trim();
     if (!serviceSwap && (!Number.isFinite(amount) || amount <= 0))
       return setNotice("Enter a valid commission amount.");
-    if (serviceSwap && (!Number.isFinite(amount) || amount <= 0))
-      return setNotice("Enter the estimated PHP value of the service swap.");
     if (serviceSwap && swapText.length < 5)
       return setNotice(
         "Briefly describe the service you are offering in exchange.",
@@ -10169,10 +10167,25 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
   const [mapRef, setMapRef] = useState<any>(null);
   const center: [number, number] = position || [10.3157, 123.8854];
 
+  const fetchAddress = async (lat: number, lng: number) => {
+    if (!setLocationLabel) return;
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = await res.json();
+      if (data && data.display_name) {
+         const parts = data.display_name.split(", ");
+         setLocationLabel(parts.slice(0, 3).join(", "));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const pinHere = () => {
     if (mapRef) {
       const c = mapRef.getCenter();
       setPosition([c.lat, c.lng]);
+      void fetchAddress(c.lat, c.lng);
     }
   };
 
@@ -10183,16 +10196,8 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       setPosition([lat, lng]);
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-        const data = await res.json();
-        if (data && data.display_name && setLocationLabel) {
-           const parts = data.display_name.split(", ");
-           setLocationLabel(parts.slice(0, 3).join(", "));
-        }
-      } catch (err) {
-        console.error(err);
-      }
+      if (mapRef) mapRef.flyTo([lat, lng], 15, { animate: true });
+      await fetchAddress(lat, lng);
       setLoadingLoc(false);
     }, () => setLoadingLoc(false));
   };
@@ -10201,16 +10206,9 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
     useMapEvents({
       click(e) {
         setPosition([e.latlng.lat, e.latlng.lng]);
+        void fetchAddress(e.latlng.lat, e.latlng.lng);
       },
     });
-    return null;
-  }
-
-  function MapFlyTo() {
-    const map = useMap();
-    useEffect(() => {
-      if (position) map.flyTo(position, 15, { animate: true });
-    }, [position, map]);
     return null;
   }
 
@@ -10229,7 +10227,6 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         <MapClickHandler />
-        <MapFlyTo />
         {position && (
           <Marker 
             position={position} 
@@ -10240,15 +10237,13 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
                 const marker = e.target;
                 const pos = marker.getLatLng();
                 setPosition([pos.lat, pos.lng]);
+                void fetchAddress(pos.lat, pos.lng);
               }
             }}
           />
         )}
       </MapContainer>
-      <div style={{ position: 'absolute', zIndex: 400, top: '10px', left: '10px', right: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
-        <div style={{ background: 'rgba(255,255,255,0.9)', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', color: '#12255c', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'inline-block', backdropFilter: 'blur(4px)', maxWidth: '40%' }}>
-          {position ? '📍 Location pinned (drag to move)' : 'Tap or pin here'}
-        </div>
+      <div style={{ position: 'absolute', zIndex: 400, top: '10px', left: '10px', right: '10px', display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', pointerEvents: 'none' }}>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button 
             type="button"
