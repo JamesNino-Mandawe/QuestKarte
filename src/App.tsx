@@ -729,31 +729,8 @@ function AppShell({
     return () => window.clearInterval(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id]);
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
-  // Poll for unread messages in background
-  useEffect(() => {
-    if (!session) return;
-    const fetchUnread = async () => {
-      const { data } = await supabase
-        .from('conversation_members')
-        .select('conversation_id, last_read_at, conversations:conversations(last_message_at)')
-        .eq('user_id', session.user.id);
-      if (!data) return;
-      let count = 0;
-      for (const row of data) {
-        const conv = Array.isArray(row.conversations) ? row.conversations[0] : row.conversations;
-        if (conv?.last_message_at && (!row.last_read_at || new Date(conv.last_message_at) > new Date(row.last_read_at))) {
-          count++;
-        }
-      }
-      setUnreadChatCount(count);
-    };
-    void fetchUnread();
-    const t = window.setInterval(() => void fetchUnread(), 15000);
-    return () => window.clearInterval(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user.id]);
+
   
   useEffect(() => {
     const handleNav = () => setPage("tasks");
