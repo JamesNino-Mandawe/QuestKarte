@@ -2001,6 +2001,7 @@ function MarketplaceFeedLive({
         posterName:
           members.get(task.posted_by)?.full_name || "QuestKarte member",
         posterTrust: members.get(task.posted_by)?.trust_factor || 0,
+        posterAvatar: members.get(task.posted_by)?.avatar_url,
       })),
     );
     setErrorMessage("");
