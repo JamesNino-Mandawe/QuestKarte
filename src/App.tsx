@@ -5810,6 +5810,7 @@ type StaffTaskRecord = {
   is_service_swap: boolean;
   swap_details: string | null;
   requires_student_verification: boolean;
+  poster?: any;
 };
 type VerificationRecord = {
   id: string;
@@ -6471,6 +6472,19 @@ function StaffWorkspace({
               <article className="staff-case" key={task.id}>
                 <div>
                   <strong>{task.title}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '10px 0' }}>
+                    {task.poster?.avatar_url ? (
+                      <img src={task.poster.avatar_url} alt="Profile" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '12px' }}>
+                        {task.poster?.full_name?.charAt(0) || '?'}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ margin: 0, fontWeight: 800, color: '#1e293b', fontSize: '13px' }}>{task.poster?.full_name || "Unknown"}</span>
+                      {/* Note: email is not stored in public profiles table, so we use a placeholder or omit it */}
+                    </div>
+                  </div>
                   <span>
                     {task.location_label} · submitted{" "}
                     {new Date(task.created_at).toLocaleDateString()}
