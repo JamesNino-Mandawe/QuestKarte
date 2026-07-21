@@ -5918,17 +5918,43 @@ function AdminAnalyticsDashboard() {
   const [completedCount, setCompletedQuests] = useState(0);
   const [categories, setCategories] = useState<{name: string; pct: number; color: string}[]>([]);
   const [trustStats, setTrustStats] = useState<{label: string; pct: number; emoji: string; color: string; h: string}[]>([]);
+  const [revBars, setRevBars] = useState<{label: string; h: string; active: boolean}[]>([]);
 
   useEffect(() => {
     async function loadData() {
       const [{ data: tasks }, { data: profiles }] = await Promise.all([
-        supabase.from("tasks").select("status, category:categories(name)"),
+        supabase.from("tasks").select("status, created_at, category:categories(name)"),
         supabase.from("profiles").select("trust_factor")
       ]);
 
       if (tasks) {
-        const completed = tasks.filter(t => t.status === "completed").length;
-        setCompletedQuests(completed);
+        const completed = tasks.filter(t => t.status === "completed");
+        setCompletedQuests(completed.length);
+        
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const bins = Array(12).fill(0);
+        const binSizeMs = (30 * 24 * 60 * 60 * 1000) / 12;
+        
+        completed.forEach(t => {
+          const tDate = new Date(t.created_at);
+          if (tDate >= thirtyDaysAgo) {
+            const diffMs = tDate.getTime() - thirtyDaysAgo.getTime();
+            const binIdx = Math.min(11, Math.floor(diffMs / binSizeMs));
+            bins[binIdx]++;
+          }
+        });
+        
+        const maxBin = Math.max(1, ...bins);
+        const dynamicBars = bins.map((val, i) => {
+          const date = new Date(thirtyDaysAgo.getTime() + (i * binSizeMs));
+          return {
+            label: (i === 0 || i === 5 || i === 11) ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '',
+            h: Math.max(5, Math.round((val / maxBin) * 100)) + '%',
+            active: i === 11
+          };
+        });
+        setRevBars(dynamicBars);
 
         const catCounts: Record<string, number> = {};
         let totalCats = 0;
@@ -5978,20 +6004,7 @@ function AdminAnalyticsDashboard() {
     loadData();
   }, []);
 
-  const revBars = [
-    { label: 'Jul 1', h: '30%', active: false },
-    { label: '', h: '45%', active: false },
-    { label: '', h: '40%', active: false },
-    { label: '', h: '60%', active: false },
-    { label: '', h: '50%', active: false },
-    { label: 'Jul 15', h: '65%', active: false },
-    { label: '', h: '55%', active: false },
-    { label: '', h: '70%', active: false },
-    { label: '', h: '48%', active: false },
-    { label: '', h: '55%', active: false },
-    { label: '', h: '68%', active: false },
-    { label: 'Jul 30', h: '95%', active: true }
-  ];
+  
 
   if (loading) return <div className="admin-analytics-wrapper" style={{ minHeight: 400, display: 'grid', placeItems: 'center' }}>Loading Live Analytics...</div>;
 
@@ -6093,6 +6106,15 @@ function StaffWorkspace({
   const [rejectModal, setRejectModal] = useState<{ type: 'verification' | 'task'; record: VerificationRecord | StaffTaskRecord } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [taskPreview, setTaskPreview] = useState<Quest | null>(null);
+  
+  const logAdminAction = async (action: string, entity_type: string) => {
+    if (!session) return;
+    await supabase.from("admin_audit_logs").insert({
+      action,
+      entity_type,
+      user_id: session.user.id
+    });
+  };
 
   useEffect(() => {
     setTab(activeTab);
@@ -6243,6 +6265,7 @@ function StaffWorkspace({
         ? "Task approved and now visible to all members."
         : "Task rejected with a private reason for the poster.",
     );
+    await logAdminAction(approved ? `Approved task: ${task.title}` : `Rejected task: ${task.title}`, "task");
     await load();
   };
 
@@ -6308,7 +6331,10 @@ function StaffWorkspace({
           ? "Verification approved. Email sent successfully."
           : "Verification rejected. Email sent successfully."
     );
-    if (!error) await load();
+    if (!error) {
+      await logAdminAction(approved ? `Approved verification for user` : `Rejected verification for user`, "verification");
+      await load();
+    }
   };
 
   const openVerificationEvidence = async (record: VerificationRecord) => {
@@ -6424,7 +6450,10 @@ function StaffWorkspace({
       })
       .eq("id", id);
     setNotice(error ? error.message : `Case marked ${outcome}.`);
-    if (!error) await load();
+    if (!error) {
+      await logAdminAction(`${outcome === 'resolved' ? 'Resolved' : 'Dismissed'} ${table === 'reports' ? 'report' : 'dispute'}`, table);
+      await load();
+    }
   };
 
   const promote = async (member: StaffMember) => {
@@ -6440,7 +6469,10 @@ function StaffWorkspace({
         ? `${error.message} Run the latest staff migration first.`
         : `${member.full_name} is now a Moderator.`,
     );
-    if (!error) await load();
+    if (!error) {
+      await logAdminAction(`Promoted ${member.full_name} to Moderator`, "moderator");
+      await load();
+    }
   };
 
   const addCategory = async () => {
@@ -6454,7 +6486,10 @@ function StaffWorkspace({
       .from("categories")
       .insert({ name, slug, icon: "circle" });
     setNotice(error ? error.message : `${name} category added.`);
-    if (!error) await load();
+    if (!error) {
+      await logAdminAction(`Added category: ${name}`, "category");
+      await load();
+    }
   };
 
   const moderatorIds = new Set(
