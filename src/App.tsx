@@ -7853,33 +7853,74 @@ function TaskWorkspace({
                 const dateStr = `${m} ${d.getDate()}, ${d.getFullYear()} ${timeStr}`;
                 const names = contact.name.split(' ');
                 const formattedName = names.length > 1 ? `${names[0].substring(0, 2).toUpperCase()}•${names[0].substring(2, 3).toUpperCase()} ${names[names.length - 1][0].toUpperCase()}.` : contact.name.toUpperCase();
-                const html = `<div style="background-color:#015ee6;padding:40px 20px;font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;">
-  <div style="max-width:400px;margin:0 auto;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.2);">
-    <div style="text-align:center;padding:30px 20px 20px;">
-      <div style="background:#015ee6;color:#fff;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;">✓</div>
-      <div style="font-size:22px;font-weight:700;color:#0f172a;letter-spacing:1px;margin-bottom:8px;">${formattedName}</div>
-      <div style="background:#f1f5f9;display:inline-block;padding:6px 20px;border-radius:20px;font-size:16px;font-weight:600;color:#334155;margin-bottom:8px;">+63 9** *** ****</div>
-      <div style="color:#64748b;font-size:15px;">Sent via GCash</div>
+                const html = `
+<div style="background-color:#005CE6;padding:20px 0 60px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;width:100%;max-width:480px;margin:0 auto;box-sizing:border-box;">
+  <!-- Header portion (blue) -->
+  <div style="padding: 0 20px 30px;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+      <tr>
+        <td style="color:#fff;font-size:20px;font-weight:600;padding-bottom:24px;">
+          <span style="font-size:24px;margin-right:12px;vertical-align:middle;font-weight:normal;">✕</span>
+          <span style="vertical-align:middle;">Express Send</span>
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <table border="0" cellspacing="0" cellpadding="0" style="color:#fff;font-size:14px;font-weight:500;">
+            <tr>
+              <td style="padding-right:60px;">
+                <span style="font-size:18px;vertical-align:middle;margin-right:6px;">↓</span> Download
+              </td>
+              <td>
+                <span style="font-size:18px;vertical-align:middle;margin-right:6px;">🔗</span> Share
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <!-- Receipt Card Wrapper -->
+  <div style="padding:0 20px;">
+    <!-- Main white card -->
+    <div style="background-color:#ffffff;border-radius:8px 8px 0 0;padding:40px 24px 30px;text-align:center;">
+      <!-- Successfully Sent -->
+      <table border="0" cellspacing="0" cellpadding="0" align="center" style="margin-bottom:40px;">
+        <tr>
+          <td style="background-color:#22c55e;color:#fff;width:24px;height:24px;border-radius:50%;text-align:center;font-size:13px;font-weight:bold;line-height:24px;">✓</td>
+          <td style="padding-left:10px;color:#334155;font-weight:500;font-size:16px;letter-spacing:0.3px;">Successfully Sent</td>
+        </tr>
+      </table>
+      <!-- Amount -->
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:14px;">
+        <tr>
+          <td align="left" style="color:#64748b;font-size:15px;font-weight:500;">Amount</td>
+          <td align="right" style="color:#0f172a;font-size:15px;font-weight:600;">${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+        </tr>
+      </table>
+      <div style="border-bottom:1px solid #e2e8f0;margin-bottom:16px;"></div>
+      <!-- Total -->
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:14px;">
+        <tr>
+          <td align="left" style="color:#0f172a;font-size:18px;font-weight:700;">Total</td>
+          <td align="right" style="color:#0f172a;font-size:18px;font-weight:700;">${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+        </tr>
+      </table>
+      <div style="border-bottom:1px solid #e2e8f0;margin-bottom:40px;"></div>
+      <!-- Ref No -->
+      <div style="color:#475569;font-size:14px;font-weight:500;margin-bottom:40px;">
+        Ref. No. ${refNo}
+      </div>
+      <!-- Footer GCash logo -->
+      <div style="color:#64748b;font-size:15px;font-weight:500;">
+        <span style="color:#005CE6;font-size:17px;font-weight:800;letter-spacing:-0.5px;">GCash</span> Send Money
+      </div>
     </div>
-    <div style="padding:0 24px;">
-      <div style="border-top:1px solid #e2e8f0;padding:16px 0;display:flex;justify-content:space-between;font-size:16px;font-weight:600;">
-        <span style="color:#475569;">Amount</span>
-        <span style="color:#0f172a;">${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
-      </div>
-      <div style="border-top:1px solid #e2e8f0;padding:24px 0;display:flex;justify-content:space-between;font-size:18px;font-weight:700;">
-        <span style="color:#334155;">Total Amount Sent</span>
-        <span style="color:#0f172a;">₱${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
-      </div>
-      <div style="color:#475569;font-size:13px;font-weight:600;margin-bottom:24px;">
-        Ref No. ${refNo} &nbsp;&nbsp; ${dateStr}
-      </div>
-    </div>
-    <div style="background:#7cd2a9;padding:20px 24px;display:flex;gap:16px;align-items:flex-start;">
-      <div style="font-size:28px;margin-top:-4px;">🍃</div>
-      <div>
-        <div style="font-weight:700;font-size:15px;color:#064e3b;margin-bottom:6px;">279g <span style="font-size:11px;font-weight:500;">(gCO2e)</span></div>
-        <div style="font-size:12px;color:#064e3b;line-height:1.5;">By going digital, you reduce your carbon footprint from transportation, paper, and plastic.</div>
-      </div>
+    <!-- Zig-zag bottom -->
+    <div style="width:100%;height:12px;line-height:0;font-size:0;">
+      <svg width="100%" height="12px" preserveAspectRatio="none" viewBox="0 0 100 10" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+        <path d="M0,0 L100,0 L100,5 L97.5,10 L95,5 L92.5,10 L90,5 L87.5,10 L85,5 L82.5,10 L80,5 L77.5,10 L75,5 L72.5,10 L70,5 L67.5,10 L65,5 L62.5,10 L60,5 L57.5,10 L55,5 L52.5,10 L50,5 L47.5,10 L45,5 L42.5,10 L40,5 L37.5,10 L35,5 L32.5,10 L30,5 L27.5,10 L25,5 L22.5,10 L20,5 L17.5,10 L15,5 L12.5,10 L10,5 L7.5,10 L5,5 L2.5,10 L0,5 Z" fill="#ffffff" />
+      </svg>
     </div>
   </div>
 </div>`;
