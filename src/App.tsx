@@ -4008,6 +4008,8 @@ function FreshChatReal({
             (m) => m.conversation_id === c.id && m.user_id !== session.user.id,
           )?.user_id || "";
         const otherProfile = profileMap.get(otherId);
+        const rawUnread = Boolean(c.updated_at && c.created_at && c.updated_at !== c.created_at && (!membershipRows?.find(r => r.conversation_id === c.id)?.last_read_at || new Date(c.updated_at) > new Date(membershipRows.find(r => r.conversation_id === c.id)!.last_read_at!)));
+        // If we are currently looking at this conversation, force unread to false to prevent race conditions during DB updates
         return {
           id: c.id,
           task_id: c.task_id,
@@ -4016,7 +4018,7 @@ function FreshChatReal({
           otherName: otherProfile?.full_name || "QuestKarte member",
           otherAvatar: otherProfile?.avatar_url || null,
           title: c.task_id ? (taskMap.get(c.task_id)?.title || null) : null,
-          isUnread: Boolean(c.updated_at && c.created_at && c.updated_at !== c.created_at && (!membershipRows?.find(r => r.conversation_id === c.id)?.last_read_at || new Date(c.updated_at) > new Date(membershipRows.find(r => r.conversation_id === c.id)!.last_read_at!))),
+          isUnread: c.id === selected ? false : rawUnread,
         };
       }),
     );
