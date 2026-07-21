@@ -1859,6 +1859,7 @@ type SharedMarketplaceTask = {
   categoryName: string;
   posterName: string;
   posterTrust: number;
+  posterAvatar?: string;
 };
 type RawSharedTask = Omit<
   SharedMarketplaceTask,
@@ -1946,7 +1947,7 @@ function MarketplaceFeedLive({
       memberIds.length
         ? supabase
             .from("profiles")
-            .select("id,full_name,trust_factor")
+            .select("id,full_name,trust_factor,avatar_url")
             .in("id", memberIds)
         : Promise.resolve({ data: [], error: null }),
       categoryIds.length
@@ -2042,6 +2043,7 @@ function MarketplaceFeedLive({
       : task.requires_student_verification
         ? ("student" as const)
         : undefined,
+    avatarUrl: task.posterAvatar,
     initials: task.posterName.slice(0, 2).toUpperCase(),
     images: task.images,
   });
@@ -2598,7 +2600,8 @@ function MarketplaceFeedGuest({ onJoin }: { onJoin: () => void }) {
                     : task.requires_student_verification
                       ? "student"
                       : undefined,
-                  initials: (member?.full_name || "M")
+                  avatarUrl: member?.avatar_url,
+                initials: (member?.full_name || "M")
                     .slice(0, 2)
                     .toUpperCase(),
                 }}
@@ -5530,7 +5533,8 @@ function PostTask({
             location: location || "Your general area",
             schedule: "Will be published now",
             posterName: profile?.full_name || "You",
-            initials: (profile?.full_name || "You").slice(0, 2).toUpperCase(),
+            avatarUrl: profile?.avatar_url,
+                initials: (profile?.full_name || "You").slice(0, 2).toUpperCase(),
             kind: swap ? "swap" : studentOnly ? "student" : undefined,
           }}
         />
@@ -9212,7 +9216,8 @@ function LegacyPostTaskReal({
             location: location || "Your general area",
             schedule: "After moderation review",
             posterName: profile?.full_name || "You",
-            initials: (profile?.full_name || "You").slice(0, 2).toUpperCase(),
+            avatarUrl: profile?.avatar_url,
+                initials: (profile?.full_name || "You").slice(0, 2).toUpperCase(),
             images: previews,
           }}
         />
@@ -9478,7 +9483,8 @@ function LegacyPostTaskRealV2({
             location: location || "Your general area",
             schedule: "After moderation review",
             posterName: profile?.full_name || "You",
-            initials: (profile?.full_name || "You").slice(0, 2).toUpperCase(),
+            avatarUrl: profile?.avatar_url,
+                initials: (profile?.full_name || "You").slice(0, 2).toUpperCase(),
             images: previewImages,
           }}
         />
@@ -9825,7 +9831,8 @@ function PostTaskReal({
             location: location || "Your general area",
             schedule: "After moderation review",
             posterName: profile?.full_name || "You",
-            initials: (profile?.full_name || "You").slice(0, 2).toUpperCase(),
+            avatarUrl: profile?.avatar_url,
+                initials: (profile?.full_name || "You").slice(0, 2).toUpperCase(),
             kind: serviceSwap ? "swap" : undefined,
             images: previewImages,
           }}
