@@ -2225,7 +2225,10 @@ function MemberProfileModal({
     const submitReport = async () => {
       if (reportReason.length < 5) return setNotice("Reason must be at least 5 characters.");
       setNotice("");
-      const { error } = await supabase.from("reports").insert({ reported_user_id: memberId, reason: reportReason });
+      const sessionResponse = await supabase.auth.getSession();
+      const reporterId = sessionResponse.data.session?.user.id;
+      if (!reporterId) return setNotice("You must be logged in to report.");
+      const { error } = await supabase.from("reports").insert({ reporter_id: reporterId, reported_user_id: memberId, reason: reportReason });
       if (error) setNotice(error.message);
       else { setReportSuccess(true); setIsReporting(false); setReportReason(""); }
     };
@@ -2281,9 +2284,20 @@ function MemberProfileModal({
               </span>
               <div>
                 <span className="eyebrow">QuestKarte member</span>
-                <h2>{name}</h2>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {name}
+                  {member?.id && (
+                    <span 
+                      style={{ fontSize: 13, color: '#7a8daa', fontWeight: 'normal', cursor: 'pointer', background: '#f1f5f9', padding: '4px 8px', borderRadius: 12 }} 
+                      title="Click to copy User ID"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigator.clipboard.writeText(member.id); alert('User ID copied to clipboard!'); }}
+                    >
+                      ID: {member.id.split('-')[0]}...
+                    </span>
+                  )}
+                </h2>
                 <p>
-                  {member.verification_status === "verified"
+                  {member?.verification_status === "verified"
                     ? "Verified member"
                     : "Member profile"}
                   {member.city ? ` · ${member.city}` : ""}
@@ -3983,7 +3997,7 @@ function FreshChatReal({
       ),
     ];
 
-    const [{ data: profiles }, { data: tasks }] = await Promise.all([
+    const [{ data: profiles }, { data: tasks }, { data: reviews }] = await Promise.all([
       participantIds.length
         ? supabase
             .from("profiles")
@@ -3993,13 +4007,27 @@ function FreshChatReal({
       taskIds.length
         ? supabase
             .from("tasks")
-            .select("id,title,status,commission_amount,deadline_at")
+            .select("id,title,status,commission_amount,deadline_at,payment_status,is_service_swap")
             .in("id", taskIds)
+        : Promise.resolve({ data: [] }),
+      taskIds.length
+        ? supabase
+            .from("reviews")
+            .select("task_id")
+            .in("task_id", taskIds)
         : Promise.resolve({ data: [] }),
     ]);
 
+    const reviewCounts = new Map<string, number>();
+    (reviews || []).forEach(r => {
+      reviewCounts.set(r.task_id, (reviewCounts.get(r.task_id) || 0) + 1);
+    });
+
     const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
-    const taskMap = new Map((tasks || []).map((t) => [t.id, t]));
+    const taskMap = new Map((tasks || []).map((t) => [t.id, {
+      ...t,
+      isOfficiallyFinished: t.status === "completed" && (reviewCounts.get(t.id) || 0) >= 2 && (t.is_service_swap || t.payment_status === 'paid')
+    }]));
 
     setConversations(
       (convRows || []).map((c) => {
@@ -4256,6 +4284,22 @@ function FreshChatReal({
                     {new Date(current.task.deadline_at).toLocaleDateString()}
                   </span>
                 )}
+              </div>
+            )}
+
+            {/* Officially Finished Banner */}
+            {current.task?.isOfficiallyFinished && (
+              <div style={{ margin: '15px 20px', padding: '15px', background: '#f7f9fe', borderRadius: '12px', border: '1px solid #dce4f1', textAlign: 'center' }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>🎉</div>
+                <strong style={{ display: 'block', color: '#12255c', marginBottom: 4 }}>This task is officially finished!</strong>
+                <p style={{ fontSize: 13, color: '#4a5568', margin: '0 0 12px 0' }}>It was a good task accompany, thank you and have a great quest ahead, see you around!</p>
+                <button className="btn" style={{ background: '#fff', border: '1px solid #cdd8ea' }} onClick={() => {
+                   if (window.confirm('Delete this chat from your history?')) {
+                      supabase.from('conversation_members').delete().eq('conversation_id', current.id).eq('user_id', session.user.id).then(() => {
+                        window.location.reload();
+                      });
+                   }
+                }}>Delete Chat</button>
               </div>
             )}
 
