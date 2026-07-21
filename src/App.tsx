@@ -3395,6 +3395,10 @@ function TaskLifecycleCard({
               if(confirm('Remove this finished task from your view?')) {
                 localStorage.setItem('dismissed-task-' + task.id, 'true');
                 reloadTasks();
+                const field = isApplicant ? 'hidden_by_assignee' : 'hidden_by_poster';
+                supabase.from("tasks").update({ [field]: true }).eq("id", task.id).then(() => {
+                  reloadTasks();
+                });
               }
             }}>Clear from view</button>
           </div>
@@ -3410,8 +3414,10 @@ function TaskLifecycleCard({
                   style={{ fontSize: 11, padding: '4px 8px', background: '#e1f5e8', color: '#159b78', border: '1px solid #c2e6d1', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
                   onClick={() => {
                     if (window.confirm('Remove this finished task from your history?')) {
-                      localStorage.setItem('dismissed-task-' + task.id, 'true');
-                      window.location.reload();
+                      const field = isApplicant ? 'hidden_by_assignee' : 'hidden_by_poster';
+                      supabase.from("tasks").update({ [field]: true }).eq("id", task.id).then(() => {
+                        window.location.reload();
+                      });
                     }
                   }}
                 >
@@ -3691,6 +3697,24 @@ function TaskLifecycleCard({
                 <strong>₱{task.commission_amount || 0}</strong>
               </div>
             </div>
+            {task.payment_status === "released" && task.assigned_to === sessionUserId && (
+              <div style={{ marginTop: 15, padding: 12, background: '#e1f5e8', borderRadius: 8, textAlign: 'center' }}>
+                <p style={{ margin: '0 0 10px', color: '#159b78', fontWeight: 'bold' }}>Payment has been released by the client.</p>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ background: '#159b78', width: '100%' }}
+                  onClick={() => {
+                    if (window.confirm("Confirm you have received the payment?")) {
+                      supabase.from("tasks").update({ status: "completed" }).eq("id", task.id).then(() => {
+                         window.location.reload();
+                      });
+                    }
+                  }}
+                >
+                  Confirm Payment Received
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
