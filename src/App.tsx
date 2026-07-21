@@ -10173,7 +10173,7 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
   const fetchAddress = async (lat: number, lng: number) => {
     if (!setLocationLabel) return;
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
       const data = await res.json();
       if (data && data.display_name) {
          const parts = data.display_name.split(", ");
@@ -10185,7 +10185,10 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
   };
 
   const pinHere = () => {
-    if (mapRef) {
+    if (position) {
+      if (mapRef) mapRef.flyTo(position, 15, { animate: true });
+      void fetchAddress(position[0], position[1]);
+    } else if (mapRef) {
       const c = mapRef.getCenter();
       setPosition([c.lat, c.lng]);
       void fetchAddress(c.lat, c.lng);
@@ -10202,7 +10205,10 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
       if (mapRef) mapRef.flyTo([lat, lng], 15, { animate: true });
       await fetchAddress(lat, lng);
       setLoadingLoc(false);
-    }, () => setLoadingLoc(false));
+    }, (err) => {
+      console.error(err);
+      setLoadingLoc(false);
+    }, { enableHighAccuracy: true });
   };
 
   function MapClickHandler() {
