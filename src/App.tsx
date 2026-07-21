@@ -714,13 +714,13 @@ function AppShell({
     const fetchUnread = async () => {
       const { data } = await supabase
         .from('conversation_members')
-        .select('last_read_at, conversations:conversations!inner(last_message_at)')
+        .select('last_read_at, conversations:conversations!inner(updated_at)')
         .eq('user_id', session.user.id);
       if (!data) return;
       let count = 0;
       for (const row of data) {
         const conv = Array.isArray(row.conversations) ? row.conversations[0] : row.conversations as any;
-        if (conv?.last_message_at && (!row.last_read_at || new Date(conv.last_message_at) > new Date(row.last_read_at))) count++;
+        if (conv?.updated_at && (!row.last_read_at || new Date(conv.updated_at) > new Date(row.last_read_at))) count++;
       }
       setUnreadChatCount(count);
     };
