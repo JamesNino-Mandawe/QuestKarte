@@ -6404,7 +6404,8 @@ function StaffWorkspace({
     if (tab === "overview")
       return (
         <div className="staff-overview">
-            <div style={{ padding: 30, background: 'linear-gradient(135deg, #101d57, #1b2f7a)', color: 'white', borderRadius: 16, marginBottom: 24, boxShadow: '0 10px 30px rgba(16,29,87,0.2)' }}>
+            {isAdmin && <AdminAnalyticsDashboard />}
+            <div style={{ padding: 30, background: 'linear-gradient(135deg, #101d57, #1b2f7a)', color: 'white', borderRadius: 16, marginBottom: 24, marginTop: isAdmin ? 24 : 0, boxShadow: '0 10px 30px rgba(16,29,87,0.2)' }}>
               <h3 style={{ margin: 0, fontSize: 24, fontWeight: 'bold' }}>Platform Health Analytics</h3>
               <p style={{ margin: 0, opacity: 0.8, marginTop: 8, fontSize: 15 }}>Real-time metrics and moderation queue status across the entire marketplace.</p>
             </div>
