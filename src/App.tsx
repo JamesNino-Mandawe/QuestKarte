@@ -7801,11 +7801,12 @@ function TaskWorkspace({
   };
 
   const markCashPayment = async (taskId: string, role: 'client' | 'provider', currentStatus: string) => {
-    let newStatus = role === 'client' ? 'client_paid' : 'provider_paid';
-    if (role === 'client' && currentStatus === 'provider_paid') newStatus = 'paid';
-    if (role === 'provider' && currentStatus === 'client_paid') newStatus = 'paid';
-    
-    const { error } = await supabase.from('tasks').update({ payment_status: newStatus }).eq('id', taskId);
+    // We use a new RPC function because RLS prevents direct updates to tasks table by regular users
+    const { error } = await supabase.rpc('mark_cash_payment', {
+      target_task_id: taskId,
+      role: role,
+      current_status: currentStatus
+    });
     if (error) { setNotice(error.message); }
     else { void load(); }
   };
