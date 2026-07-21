@@ -60,7 +60,7 @@ type MarketplaceTask = {
   published_at: string | null;
   created_at: string;
   category: { name: string } | null;
-  poster: { full_name: string; trust_factor: number } | null;
+  poster: any;
 };
 
 function MemberProgress({ profile }: { profile: MemberProfile }) {
@@ -1072,7 +1072,7 @@ function App() {
         session={session}
         status={profile?.verification_status || "unverified"}
         termsAcceptedAt={profile?.terms_accepted_at || null}
-        onSignOut={() => void supabase.auth.signOut()}
+        onSignOut={() => { setDemoMode(true); void supabase.auth.signOut(); }}
       />
     );
   if (session && showVerificationWelcome && !staffPreview && !staffRole)
@@ -1736,7 +1736,7 @@ function MarketplaceFeed({ onPost }: { onPost: () => void }) {
     const { data, error } = await supabase
       .from("tasks")
       .select(
-        "id,title,description,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,location_label,published_at,created_at,category:categories(name),poster:profiles!tasks_posted_by_fkey(full_name,trust_factor)",
+        "id,title,description,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,location_label,published_at,created_at,category:categories(name),poster:profiles!tasks_posted_by_fkey(full_name,trust_factor,avatar_url)",
       )
       .eq("status", "open")
       .order("published_at", { ascending: false });
@@ -1791,6 +1791,7 @@ function MarketplaceFeed({ onPost }: { onPost: () => void }) {
                   : task.requires_student_verification
                     ? "student"
                     : undefined,
+                avatarUrl: task.poster?.avatar_url,
                 initials: (task.poster?.full_name || "M")
                   .slice(0, 2)
                   .toUpperCase(),

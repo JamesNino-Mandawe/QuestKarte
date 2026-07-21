@@ -35,3 +35,21 @@
 .grouped-task-nav button { border: 1px solid #cbd7eb; background: #fff; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; color: #10255f; cursor: pointer; }
 .grouped-task-nav button:disabled { opacity: 0.4; cursor: not-allowed; }
 .quest-map-task-popup .map-task-preview { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; }
+
+
+/* Fix skills UI wrapping in profile modal */
+.member-profile-skills div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.member-profile-skills span {
+  display: inline-block;
+  background: #f1f5f9;
+  color: #1e293b;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  border: 1px solid #cbd5e1;
+}

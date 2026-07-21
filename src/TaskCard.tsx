@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from "react";
 
 export type Quest = {
   id: number | string; category: string; title: string; description: string; commission: string; location: string; schedule: string; posterName: string;
-  trust?: string; matchPercent?: number; kind?: "swap" | "student"; initials?: string; tone?: "rare" | "uncommon" | "urgent"; image?: string; images?: string[];
+  trust?: string; matchPercent?: number; kind?: "swap" | "student"; initials?: string; avatarUrl?: string | null; tone?: "rare" | "uncommon" | "urgent"; image?: string; images?: string[];
 };
 
 type Props = { quest: Quest; saved?: boolean; applied?: boolean; isOwner?: boolean; onSave?: () => void; onApply?: () => void; onProfileClick?: () => void };
@@ -14,7 +14,7 @@ const requirementsFor = (quest: Quest) => {
 };
 
 function ProfileLink({ quest, onProfileClick, prefix = "" }: { quest: Quest; onProfileClick?: () => void; prefix?: string }) {
-  const member = <><span className="avatar">{quest.initials || quest.posterName.slice(0, 2)}</span><span><span className="qc-pname">{prefix}{quest.posterName}</span><span className="qc-ptf">{quest.trust || "Trusted member"}</span></span></>;
+  const member = <>{quest.avatarUrl ? <img src={quest.avatarUrl} alt="Avatar" className="avatar" style={{ objectFit: 'cover' }} /> : <span className="avatar">{quest.initials || quest.posterName.slice(0, 2)}</span>}<span><span className="qc-pname">{prefix}{quest.posterName}</span><span className="qc-ptf">{quest.trust || "Trusted member"}</span></span></>;
   return onProfileClick ? <button type="button" className="qc-poster qc-poster-button" onClick={onProfileClick} aria-label={`View ${quest.posterName}'s profile`}>{member}</button> : <div className="qc-poster">{member}</div>;
 }
 
