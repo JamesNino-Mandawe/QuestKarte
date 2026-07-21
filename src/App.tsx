@@ -3868,6 +3868,7 @@ function FreshChatReal({
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState("");
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load conversations
@@ -4080,6 +4081,13 @@ function FreshChatReal({
 
   return (
     <div className={`elite-chat-layout view ${selected ? 'has-open-thread' : ''}`}>
+      {enlargedImage && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 999999, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(5px)" }} onClick={() => setEnlargedImage(null)}>
+          <button style={{ position: 'absolute', top: '20px', right: '20px', background: 'transparent', border: 'none', color: '#fff', fontSize: '30px', cursor: 'pointer' }} onClick={() => setEnlargedImage(null)}>&times;</button>
+          <img src={enlargedImage} alt="Enlarged view" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: "12px", boxShadow: "0 20px 40px rgba(0,0,0,0.5)", WebkitTouchCallout: "default" }} />
+          <div style={{ position: 'absolute', bottom: '20px', color: '#fff', fontSize: '14px', opacity: 0.7 }}>Long press image to save</div>
+        </div>
+      )}
       <div className="convo-list">
         {conversations.map((c) => (
           <button
@@ -9890,5 +9898,50 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
         </button>
       </div>
     </div>
+  );
+}
+
+function ChatAttachment({ msg, onImageClick }: { msg: any, onImageClick: (url: string) => void }) {
+  const [url, setUrl] = useState<string | null>(msg.attachment_url?.startsWith('http') ? msg.attachment_url : null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (msg.attachment_url && !msg.attachment_url.startsWith('http')) {
+      supabase.storage.from("task-attachments").createSignedUrl(msg.attachment_url, 3600 * 24).then(({ data, error }) => {
+        if (data) {
+          setUrl(data.signedUrl);
+        } else {
+          setError(true);
+        }
+      });
+    }
+  }, [msg.attachment_url]);
+
+  if (error) return <div style={{ fontSize: 11, color: '#d93025', fontStyle: 'italic', padding: '4px 8px', background: 'rgba(255,255,255,0.8)', borderRadius: 4 }}>Attachment unavailable</div>;
+  if (!url) return <div style={{ fontSize: 11, color: '#999', fontStyle: 'italic', padding: '4px 8px' }}>Loading attachment...</div>;
+
+  if (msg.attachment_type === "image") {
+    return (
+      <img 
+        src={url} 
+        alt="Attachment" 
+        className="msg-attachment-img" 
+        onClick={() => onImageClick(url)} 
+        style={{ cursor: 'zoom-in', WebkitTouchCallout: 'default', display: 'block' }} 
+      />
+    );
+  }
+
+  return (
+    <a 
+      href={url} 
+      target="_blank" 
+      rel="noreferrer" 
+      download 
+      className="msg-attachment-file" 
+      style={{ display: 'inline-block', background: 'rgba(255,255,255,0.9)', padding: '6px 12px', borderRadius: 8, color: '#12255c', textDecoration: 'none', fontWeight: 600, fontSize: 12, border: '1px solid #cdd8ea' }}
+    >
+      📄 View/Download File
+    </a>
   );
 }
