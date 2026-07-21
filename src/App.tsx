@@ -7264,6 +7264,8 @@ function PaymentReceiptCard({
     completed_at: string | null;
     poster_name?: string;
     provider_name?: string;
+    payment_status?: string;
+    is_service_swap?: boolean;
   };
 }) {
   const isGcash = task.payment_type === "gcash";
