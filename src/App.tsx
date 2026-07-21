@@ -9863,13 +9863,13 @@ function TrustHistoryModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="task-modal-backdrop" onClick={onClose} style={{ zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="task-detail-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <div className="task-modal-header" style={{ marginBottom: 15 }}>
-          <h3 style={{ margin: 0 }}>Trust Factor History</h3>
-          <button onClick={onClose} className="task-modal-close">×</button>
+      <div className="task-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '440px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden', position: 'relative' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #eef2f8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff' }}>
+          <h3 style={{ margin: 0, color: '#101d57', fontSize: '18px' }}>Trust Factor History</h3>
+          <button onClick={onClose} style={{ background: '#f0f4f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#53617c', fontSize: '20px' }}>×</button>
         </div>
         
-        <div style={{ overflowY: 'auto', flex: 1, padding: '0 24px 24px' }}>
+        <div style={{ overflowY: 'auto', flex: 1, padding: '24px' }}>
           {loading ? (
             <p>Loading history...</p>
           ) : events.length === 0 ? (
