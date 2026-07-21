@@ -6049,7 +6049,7 @@ function StaffWorkspace({
     ] = await Promise.all([
       supabase
         .from("tasks")
-        .select("id,title,description,location_label,created_at,posted_by,category_id,commission_amount,currency,is_service_swap,swap_details,requires_student_verification")
+        .select("id,title,description,location_label,created_at,posted_by,category_id,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,poster:profiles!tasks_posted_by_fkey(full_name,avatar_url,email)")
         .eq("status", "draft")
         .eq("moderation_state", "pending_review")
         .order("created_at", { ascending: true }),
