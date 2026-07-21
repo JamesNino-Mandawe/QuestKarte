@@ -7885,12 +7885,15 @@ function TaskWorkspace({
     <!-- Main white card -->
     <div style="background-color:#ffffff;border-radius:8px 8px 0 0;padding:40px 24px 30px;text-align:center;">
       <!-- Successfully Sent -->
-      <table border="0" cellspacing="0" cellpadding="0" align="center" style="margin-bottom:40px;">
+      <table border="0" cellspacing="0" cellpadding="0" align="center" style="margin-bottom:16px;">
         <tr>
           <td style="background-color:#22c55e;color:#fff;width:24px;height:24px;border-radius:50%;text-align:center;font-size:13px;font-weight:bold;line-height:24px;">✓</td>
           <td style="padding-left:10px;color:#334155;font-weight:500;font-size:16px;letter-spacing:0.3px;">Successfully Sent</td>
         </tr>
       </table>
+      <!-- Recipient Info -->
+      <div style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px;">${formattedName}</div>
+      <div style="font-size:14px;font-weight:500;color:#64748b;margin-bottom:32px;">+63 9** *** ****</div>
       <!-- Amount -->
       <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:14px;">
         <tr>
@@ -7908,8 +7911,8 @@ function TaskWorkspace({
       </table>
       <div style="border-bottom:1px solid #e2e8f0;margin-bottom:40px;"></div>
       <!-- Ref No -->
-      <div style="color:#475569;font-size:14px;font-weight:500;margin-bottom:40px;">
-        Ref. No. ${refNo}
+      <div style="color:#475569;font-size:13px;font-weight:500;margin-bottom:40px;">
+        Ref. No. ${refNo} &nbsp;&nbsp; ${dateStr}
       </div>
       <!-- Footer GCash logo -->
       <div style="color:#64748b;font-size:15px;font-weight:500;">
