@@ -714,12 +714,13 @@ function AppShell({
     const fetchUnread = async () => {
       const { data } = await supabase
         .from('conversation_members')
-        .select('last_read_at, conversations:conversations!inner(updated_at)')
+        .select('last_read_at, conversations:conversations!inner(updated_at, created_at)')
         .eq('user_id', session.user.id);
       if (!data) return;
       let count = 0;
       for (const row of data) {
         const conv = Array.isArray(row.conversations) ? row.conversations[0] : row.conversations as any;
+        if (conv?.updated_at && conv?.created_at && conv.updated_at === conv.created_at) continue;
         if (conv?.updated_at && (!row.last_read_at || new Date(conv.updated_at) > new Date(row.last_read_at))) count++;
       }
       setUnreadChatCount(count);
@@ -761,7 +762,7 @@ function AppShell({
           key={item.id}
           item={item}
           active={page === item.id}
-          onClick={() => { setPage(item.id); }}
+          onClick={() => { setPage(item.id); if (item.id === 'chat') setChatTaskId(null); }}
           badge={item.id === 'chat' ? unreadChatCount : 0}
         />
       ))}
