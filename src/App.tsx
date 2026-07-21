@@ -2501,7 +2501,7 @@ function MarketplaceFeedGuest({ onJoin }: { onJoin: () => void }) {
   const [tasks, setTasks] = useState<GuestTask[]>([]);
   const [categories, setCategories] = useState(new Map<string, string>());
   const [members, setMembers] = useState(
-    new Map<string, { full_name: string; trust_factor: number }>(),
+    new Map<string, { full_name: string; trust_factor: number; avatar_url: string | null }>(),
   );
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
