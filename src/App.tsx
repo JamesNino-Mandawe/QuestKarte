@@ -9798,11 +9798,11 @@ function PostTaskReal({
         category_id: categoryRow?.id || null,
         title: title.trim(),
         description: fullDescription,
-        commission_amount: amount,
+        commission_amount: serviceSwap ? null : amount,
         currency: "PHP",
         is_service_swap: serviceSwap,
         swap_details: serviceSwap
-          ? `Service Swap Offer · PHP ${amount.toLocaleString()} — ${swapText}`
+          ? `Service Swap Offer — ${swapText}`
           : null,
         payment_type: paymentType,
         payment_status: "pending",
@@ -9858,7 +9858,7 @@ function PostTaskReal({
       ? customCategory.trim()
       : category;
   const previewCommission = serviceSwap
-    ? `Service Swap Offer · PHP ${commission || "0"}`
+    ? `Service Swap Offer`
     : commission
       ? `PHP ${commission}`
       : "Commission";
@@ -9907,12 +9907,13 @@ function PostTaskReal({
               ))}
             </select>
           </label>
-          <label className="field-group">
+          <label className="field-group" style={{ opacity: serviceSwap ? 0.5 : 1 }}>
             <span className="field-label">Estimated value (PHP)</span>
             <input
               className="field-input"
-              required
-              value={commission}
+              required={!serviceSwap}
+              disabled={serviceSwap}
+              value={serviceSwap ? "N/A" : commission}
               onChange={(event) => setCommission(event.target.value)}
             />
           </label>
