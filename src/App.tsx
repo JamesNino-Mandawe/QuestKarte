@@ -3888,7 +3888,7 @@ function FreshChatReal({
     body: string;
     attachment_url: string | null;
     attachment_type: string | null;
-    attachment_name: string | null;
+
     created_at: string;
   };
 
@@ -3981,7 +3981,7 @@ function FreshChatReal({
   const loadMessages = async (convId: string) => {
     const { data, error } = await supabase
       .from("messages")
-      .select("id,sender_id,body,attachment_url,attachment_type,attachment_name,created_at")
+      .select("id,sender_id,body,attachment_url,attachment_type,created_at")
       .eq("conversation_id", convId)
       .eq("hidden_by_moderation", false)
       .order("created_at");
