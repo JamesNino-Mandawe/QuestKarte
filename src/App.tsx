@@ -7825,9 +7825,14 @@ function TaskWorkspace({
     </div>
   </div>
 </div>`;
-                await supabase.functions.invoke('send-email', {
+                const { error: invokeError } = await supabase.functions.invoke('send-email', {
                   body: { to: contact.email, subject: 'GCash: You received ₱' + amount.toLocaleString('en-US', {minimumFractionDigits: 2}), html: html }
                 });
+                if (invokeError) {
+                  setNotice("Payment released, but email receipt failed to send: " + (invokeError.message || invokeError));
+                }
+             } else {
+                setNotice("Payment released, but applicant has no email.");
              }
           })();
         }
