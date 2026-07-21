@@ -10186,11 +10186,15 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
   const fetchAddress = async (lat: number, lng: number) => {
     if (!setLocationLabel) return;
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
+      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
       const data = await res.json();
-      if (data && data.display_name) {
-         const parts = data.display_name.split(", ");
-         setLocationLabel(parts.slice(0, 3).join(", "));
+      if (data) {
+         const parts = [data.locality, data.city, data.principalSubdivision].filter(Boolean);
+         if (parts.length > 0) {
+           setLocationLabel(parts.join(", "));
+         } else if (data.countryName) {
+           setLocationLabel(data.countryName);
+         }
       }
     } catch (err) {
       console.error(err);
