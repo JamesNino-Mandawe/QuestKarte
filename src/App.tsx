@@ -1599,7 +1599,7 @@ function ProfileSetup({
           <div>
             <span className="setup-label">Services and strengths</span>
             <div className="skill-choices">
-              {skillOptions.map((skill) => (
+              {Array.from(new Set([...skillOptions, ...skills])).map((skill) => (
                 <button
                   type="button"
                   key={skill}
@@ -1610,7 +1610,7 @@ function ProfileSetup({
                 </button>
               ))}
             </div>
-            <div className="custom-skill">
+            <div className="custom-skill" style={{ position: "relative", display: "flex", alignItems: "center" }}>
               <input
                 value={customSkill}
                 maxLength={40}
@@ -1622,8 +1622,31 @@ function ProfileSetup({
                   }
                 }}
                 placeholder="Add another strength"
+                style={{ paddingRight: "30px", flex: 1 }}
               />
-              <button type="button" onClick={addSkill}>
+              {customSkill && (
+                <button
+                  type="button"
+                  onClick={() => setCustomSkill("")}
+                  style={{
+                    position: "absolute",
+                    right: "80px",
+                    background: "transparent",
+                    border: "none",
+                    fontSize: "18px",
+                    color: "#999",
+                    cursor: "pointer",
+                    padding: "0 8px",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center"
+                  }}
+                  title="Clear"
+                >
+                  &times;
+                </button>
+              )}
+              <button type="button" onClick={addSkill} style={{ marginLeft: "8px" }}>
                 Add
               </button>
             </div>
@@ -4658,7 +4681,7 @@ function FreshAccount({
                   </button>
                 ))}
               </div>
-              <div className="custom-skill">
+              <div className="custom-skill" style={{ position: "relative", display: "flex", alignItems: "center" }}>
                 <input
                   value={customSkill}
                   maxLength={40}
@@ -4670,8 +4693,31 @@ function FreshAccount({
                     }
                   }}
                   placeholder="Add another strength"
+                  style={{ paddingRight: "30px", flex: 1 }}
                 />
-                <button type="button" onClick={addSkill}>
+                {customSkill && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomSkill("")}
+                    style={{
+                      position: "absolute",
+                      right: "80px",
+                      background: "transparent",
+                      border: "none",
+                      fontSize: "18px",
+                      color: "#999",
+                      cursor: "pointer",
+                      padding: "0 8px",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center"
+                    }}
+                    title="Clear"
+                  >
+                    &times;
+                  </button>
+                )}
+                <button type="button" onClick={addSkill} style={{ marginLeft: "8px" }}>
                   Add
                 </button>
               </div>
