@@ -6232,7 +6232,7 @@ function AdminAnalyticsDashboard() {
       if (profiles) {
         let bronze=0, silver=0, gold=0, plat=0, cert=0;
         profiles.forEach(p => {
-          const score = p.trust_factor || 0;
+          const score = (p.trust_factor === null || p.trust_factor === undefined || p.trust_factor === 0) ? 80 : p.trust_factor;
           if (score < 70) bronze++;
           else if (score < 85) silver++;
           else if (score < 93) gold++;
