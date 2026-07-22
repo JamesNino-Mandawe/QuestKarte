@@ -3468,6 +3468,18 @@ function TaskLifecycleCard({
         <div className="tlc-header-left">
           <div className="tlc-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {task.title}
+              {task.status !== "draft" && (
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ fontSize: 11, padding: '4px 8px', background: '#fff7ed', color: '#c2410c', border: '1px solid #ffedd5', borderRadius: 12, display: 'inline-flex', alignItems: 'center' }}
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('open-dispute-modal', { detail: { taskId: task.id } }));
+                  }}
+                >
+                  ⚠️ File Dispute
+                </button>
+              )}
               {task.status === "completed" && (
                 <button
                   type="button"
@@ -10343,21 +10355,84 @@ void FreshTasks;
 
 function HelpSafetyWidget({ isGuest }: { isGuest?: boolean }) {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"guidelines"|"report">("guidelines");
+  const [tab, setTab] = useState<"guidelines" | "report" | "dispute">("guidelines");
   const [reportReason, setReportReason] = useState("");
   const [reportedUserId, setReportedUserId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const submit = async () => {
+  // Dispute tab states
+  const [userTasks, setUserTasks] = useState<{ id: string; title: string; status: string }[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState("");
+  const [disputeCategory, setDisputeCategory] = useState("Unfinished Work");
+  const [disputeReason, setDisputeReason] = useState("");
+  const [disputeSuccess, setDisputeSuccess] = useState(false);
+
+  useEffect(() => {
+    const handleOpenDispute = (e: any) => {
+      setOpen(true);
+      setTab("dispute");
+      if (e.detail?.taskId) setSelectedTaskId(e.detail.taskId);
+    };
+    window.addEventListener("open-dispute-modal", handleOpenDispute);
+    return () => window.removeEventListener("open-dispute-modal", handleOpenDispute);
+  }, []);
+
+  useEffect(() => {
+    if (open && tab === "dispute") {
+      supabase.auth.getUser().then(({ data }) => {
+        if (data.user) {
+          supabase
+            .from("tasks")
+            .select("id, title, status")
+            .or(`posted_by.eq.${data.user.id},assigned_to.eq.${data.user.id}`)
+            .order("created_at", { ascending: false })
+            .then(({ data: tasksData }) => {
+              const list = (tasksData || []) as { id: string; title: string; status: string }[];
+              setUserTasks(list);
+              if (list.length > 0 && !selectedTaskId) setSelectedTaskId(list[0].id);
+            });
+        }
+      });
+    }
+  }, [open, tab]);
+
+  const submitReport = async () => {
     if (reportReason.length < 5) return setNotice("Reason must be at least 5 characters.");
     setIsSubmitting(true);
     setNotice("");
-    const { error } = await supabase.from("reports").insert({ reported_user_id: reportedUserId || null, reason: reportReason });
+    const { data: authData } = await supabase.auth.getUser();
+    const reporterId = authData?.user?.id;
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: reporterId,
+      reported_user_id: reportedUserId || null,
+      reason: reportReason
+    });
     setIsSubmitting(false);
     if (error) setNotice(error.message);
     else setSuccess(true);
+  };
+
+  const submitDispute = async () => {
+    if (!selectedTaskId) return setNotice("Please select a task for this dispute.");
+    if (disputeReason.length < 5) return setNotice("Explanation must be at least 5 characters.");
+    setIsSubmitting(true);
+    setNotice("");
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData?.user) {
+      setIsSubmitting(false);
+      return setNotice("You must be logged in to file a dispute.");
+    }
+    const { error } = await supabase.from("disputes").insert({
+      task_id: selectedTaskId,
+      opened_by: authData.user.id,
+      reason: `[${disputeCategory}] ${disputeReason}`,
+      status: "open"
+    });
+    setIsSubmitting(false);
+    if (error) setNotice(error.message);
+    else setDisputeSuccess(true);
   };
 
   return (
@@ -10373,8 +10448,9 @@ function HelpSafetyWidget({ isGuest }: { isGuest?: boolean }) {
               <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#52617f' }}>×</button>
             </div>
             <div style={{ display: 'flex', borderBottom: '1px solid #e1e6f0' }}>
-              <button onClick={() => setTab("guidelines")} style={{ flex: 1, padding: 15, background: tab === "guidelines" ? '#fff' : '#f7f9fe', border: 'none', borderBottom: tab === "guidelines" ? '2px solid #159b78' : '2px solid transparent', fontWeight: 'bold', color: tab === "guidelines" ? '#101d57' : '#74819c', cursor: 'pointer' }}>Guidelines</button>
-              {!isGuest && <button onClick={() => setTab("report")} style={{ flex: 1, padding: 15, background: tab === "report" ? '#fff' : '#f7f9fe', border: 'none', borderBottom: tab === "report" ? '2px solid #a43f3f' : '2px solid transparent', fontWeight: 'bold', color: tab === "report" ? '#101d57' : '#74819c', cursor: 'pointer' }}>File a Report</button>}
+              <button onClick={() => { setTab("guidelines"); setNotice(""); }} style={{ flex: 1, padding: 12, background: tab === "guidelines" ? '#fff' : '#f7f9fe', border: 'none', borderBottom: tab === "guidelines" ? '2px solid #159b78' : '2px solid transparent', fontWeight: 'bold', color: tab === "guidelines" ? '#101d57' : '#74819c', cursor: 'pointer', fontSize: 13 }}>Guidelines</button>
+              {!isGuest && <button onClick={() => { setTab("report"); setNotice(""); }} style={{ flex: 1, padding: 12, background: tab === "report" ? '#fff' : '#f7f9fe', border: 'none', borderBottom: tab === "report" ? '2px solid #a43f3f' : '2px solid transparent', fontWeight: 'bold', color: tab === "report" ? '#101d57' : '#74819c', cursor: 'pointer', fontSize: 13 }}>File a Report</button>}
+              {!isGuest && <button onClick={() => { setTab("dispute"); setNotice(""); }} style={{ flex: 1, padding: 12, background: tab === "dispute" ? '#fff' : '#f7f9fe', border: 'none', borderBottom: tab === "dispute" ? '2px solid #d97706' : '2px solid transparent', fontWeight: 'bold', color: tab === "dispute" ? '#101d57' : '#74819c', cursor: 'pointer', fontSize: 13 }}>File a Dispute</button>}
             </div>
             <div style={{ padding: 24, overflowY: 'auto' }}>
               {tab === "guidelines" ? (
@@ -10385,16 +10461,16 @@ function HelpSafetyWidget({ isGuest }: { isGuest?: boolean }) {
                   <p style={{ marginBottom: 10 }}><strong>3. Keep it on the platform.</strong> Do not ask for or provide services outside of QuestKarte.</p>
                   <p style={{ marginBottom: 10 }}><strong>4. Be honest.</strong> Misrepresenting your skills or identity may result in a ban.</p>
                   <div style={{ marginTop: 20, padding: 15, background: 'rgba(21,155,120,0.1)', borderRadius: 10, color: '#159b78' }}>
-                    {isGuest ? "If you encounter behavior that violates these guidelines, please sign in to file a report with our moderation team." : "If you encounter behavior that violates these guidelines, please switch to the <strong>File a Report</strong> tab to alert our moderation team."}
+                    {isGuest ? "If you encounter behavior that violates these guidelines, please sign in to file a report or dispute." : "Use <strong>File a Report</strong> for general rule violations, or <strong>File a Dispute</strong> for task disagreement cases."}
                   </div>
                 </div>
-              ) : (
+              ) : tab === "report" ? (
                 <div style={{ color: '#52617f', fontSize: 14 }}>
                   {success ? (
                     <div style={{ background: 'rgba(70,214,163,0.1)', color: '#159b78', padding: 20, borderRadius: 10, textAlign: 'center' }}>
                       <span style={{ fontSize: 40, display: 'block', marginBottom: 10 }}>✓</span>
                       <strong>Report submitted!</strong>
-                      <p style={{ marginTop: 5 }}>Our safety team will review it shortly.</p>
+                      <p style={{ marginTop: 5 }}>Our moderation team will review it shortly.</p>
                     </div>
                   ) : (
                     <>
@@ -10408,7 +10484,53 @@ function HelpSafetyWidget({ isGuest }: { isGuest?: boolean }) {
                         <strong style={{ display: 'block', marginBottom: 5, color: '#101d57' }}>Reason for Report *</strong>
                         <textarea value={reportReason} onChange={e => setReportReason(e.target.value)} placeholder="Please explain the issue in detail..." style={{ width: '100%', minHeight: 120, padding: 12, borderRadius: 10, border: '1px solid #cdd8ea', outline: 'none', resize: 'vertical' }} />
                       </label>
-                      <button onClick={submit} disabled={isSubmitting} style={{ width: '100%', padding: 15, borderRadius: 12, background: '#a43f3f', color: '#fff', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: 15 }}>{isSubmitting ? 'Submitting...' : 'Submit Report to Moderators'}</button>
+                      <button onClick={submitReport} disabled={isSubmitting} style={{ width: '100%', padding: 15, borderRadius: 12, background: '#a43f3f', color: '#fff', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: 15 }}>{isSubmitting ? 'Submitting...' : 'Submit Report to Moderators'}</button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div style={{ color: '#52617f', fontSize: 14 }}>
+                  {disputeSuccess ? (
+                    <div style={{ background: 'rgba(217,119,6,0.1)', color: '#d97706', padding: 20, borderRadius: 10, textAlign: 'center' }}>
+                      <span style={{ fontSize: 40, display: 'block', marginBottom: 10 }}>⚖️</span>
+                      <strong>Dispute Submitted to Moderators!</strong>
+                      <p style={{ marginTop: 5 }}>Our moderation team has received your dispute and will inspect your task details and chat to help resolve the case.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <p style={{ marginTop: 0, marginBottom: 20 }}>File a dispute if you have a disagreement on an active or completed task (e.g. payment issue, unfinished work, quality dispute).</p>
+                      {notice && <p style={{ color: '#a43f3f', marginBottom: 15, padding: 10, background: '#fff7f7', borderRadius: 8, border: '1px solid #e5bbbb' }}>{notice}</p>}
+                      
+                      <label style={{ display: 'block', marginBottom: 15 }}>
+                        <strong style={{ display: 'block', marginBottom: 5, color: '#101d57' }}>Select Task for Dispute *</strong>
+                        {userTasks.length > 0 ? (
+                          <select value={selectedTaskId} onChange={e => setSelectedTaskId(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 10, border: '1px solid #cdd8ea', outline: 'none', background: '#fff' }}>
+                            {userTasks.map(t => (
+                              <option key={t.id} value={t.id}>{t.title} ({t.status.replace('_', ' ')})</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p style={{ color: '#94a3b8', margin: 0, fontSize: 13 }}>No active or past tasks found under your account.</p>
+                        )}
+                      </label>
+
+                      <label style={{ display: 'block', marginBottom: 15 }}>
+                        <strong style={{ display: 'block', marginBottom: 5, color: '#101d57' }}>Dispute Category</strong>
+                        <select value={disputeCategory} onChange={e => setDisputeCategory(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 10, border: '1px solid #cdd8ea', outline: 'none', background: '#fff' }}>
+                          <option value="Unfinished Work">Unfinished / Incomplete Work</option>
+                          <option value="Payment Disagreement">Payment / Receipt Disagreement</option>
+                          <option value="Unresponsive Member">Unresponsive Member</option>
+                          <option value="Quality Dispute">Quality / Requirements Disagreement</option>
+                          <option value="Other">Other Conflict</option>
+                        </select>
+                      </label>
+
+                      <label style={{ display: 'block', marginBottom: 20 }}>
+                        <strong style={{ display: 'block', marginBottom: 5, color: '#101d57' }}>Dispute Details & Explanation *</strong>
+                        <textarea value={disputeReason} onChange={e => setDisputeReason(e.target.value)} placeholder="Explain the disagreement clearly for the moderator..." style={{ width: '100%', minHeight: 110, padding: 12, borderRadius: 10, border: '1px solid #cdd8ea', outline: 'none', resize: 'vertical' }} />
+                      </label>
+
+                      <button onClick={submitDispute} disabled={isSubmitting || !userTasks.length} style={{ width: '100%', padding: 15, borderRadius: 12, background: '#d97706', color: '#fff', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: 15 }}>{isSubmitting ? 'Submitting...' : 'Submit Dispute to Moderators'}</button>
                     </>
                   )}
                 </div>
