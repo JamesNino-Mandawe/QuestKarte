@@ -5969,12 +5969,17 @@ type ReportRecord = {
   reason: string;
   status: string;
   created_at: string;
+  reporter_id?: string;
+  reported_user_id?: string;
+  task_id?: string;
 };
 type DisputeRecord = {
   id: string;
   reason: string;
   status: string;
   created_at: string;
+  opened_by?: string;
+  task_id?: string;
 };
 type StaffMember = {
   id: string;
@@ -6243,12 +6248,12 @@ function StaffWorkspace({
         .order("created_at", { ascending: true }),
       supabase
         .from("reports")
-        .select("id,reason,status,created_at")
+        .select("id,reason,status,created_at,reporter_id,reported_user_id,task_id")
         .in("status", ["open", "under_review"])
         .order("created_at", { ascending: true }),
       supabase
         .from("disputes")
-        .select("id,reason,status,created_at")
+        .select("id,reason,status,created_at,opened_by,task_id")
         .in("status", ["open", "under_review"])
         .order("created_at", { ascending: true }),
       supabase
@@ -6550,30 +6555,104 @@ function StaffWorkspace({
     table: "reports" | "disputes",
     id: string,
     outcome: "resolved" | "dismissed",
+    targetReport?: ReportRecord,
+    targetDispute?: DisputeRecord
   ) => {
     if (!session) return;
-    const note = window
-      .prompt(
-        outcome === "resolved"
-          ? "Resolution note for staff history:"
-          : "Reason for dismissing this case:",
-      )
-      ?.trim();
+
+    if (outcome === "dismissed") {
+      const note = window.prompt("Reason for dismissing this case:")?.trim();
+      if (!note) return;
+      const { error } = await supabase
+        .from(table)
+        .update({
+          status: "dismissed",
+          handled_by: session.user.id,
+          resolution_note: note,
+          resolved_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+      setNotice(error ? error.message : "Case dismissed.");
+      if (!error) {
+        await logAdminAction(`Dismissed ${table === 'reports' ? 'report' : 'dispute'}`, table);
+        await load();
+      }
+      return;
+    }
+
+    const note = window.prompt("Resolution note for staff history:")?.trim();
     if (!note) return;
+
+    let offenderUserId: string | undefined = undefined;
+    let taskRefId: string | undefined = undefined;
+    let reasonText = "";
+
+    if (table === "reports" && targetReport) {
+      offenderUserId = targetReport.reported_user_id;
+      taskRefId = targetReport.task_id;
+      reasonText = targetReport.reason;
+    } else if (table === "disputes" && targetDispute) {
+      taskRefId = targetDispute.task_id;
+      reasonText = targetDispute.reason;
+      const choice = window.prompt(
+        `Who should be penalized for this dispute? Enter 'opened_by' or a specific User ID (or leave blank to resolve without penalty):`,
+        targetDispute.opened_by || ""
+      )?.trim();
+      if (choice) offenderUserId = choice;
+    }
+
+    let penalty = 15;
+    if (offenderUserId) {
+      const penaltyInput = window.prompt("Trust Factor deduction penalty amount (default 15 pts):", "15")?.trim();
+      if (penaltyInput && !isNaN(Number(penaltyInput))) {
+        penalty = Math.abs(Number(penaltyInput));
+      }
+    }
+
     const { error } = await supabase
       .from(table)
       .update({
-        status: outcome,
+        status: "resolved",
         handled_by: session.user.id,
         resolution_note: note,
         resolved_at: new Date().toISOString(),
       })
       .eq("id", id);
-    setNotice(error ? error.message : `Case marked ${outcome}.`);
-    if (!error) {
-      await logAdminAction(`${outcome === 'resolved' ? 'Resolved' : 'Dismissed'} ${table === 'reports' ? 'report' : 'dispute'}`, table);
-      await load();
+
+    if (error) {
+      setNotice(error.message);
+      return;
     }
+
+    if (offenderUserId) {
+      const { data: prof } = await supabase.from("profiles").select("trust_factor, full_name").eq("id", offenderUserId).maybeSingle();
+      const currentScore = prof?.trust_factor ?? 80;
+      const newScore = Math.max(0, currentScore - penalty);
+
+      await supabase.from("profiles").update({ trust_factor: newScore }).eq("id", offenderUserId);
+
+      await supabase.from("trust_events").insert({
+        user_id: offenderUserId,
+        task_id: taskRefId || null,
+        points: -penalty,
+        reason: `Penalized by Moderator: ${reasonText.slice(0, 150)}`,
+        created_by: session.user.id
+      });
+
+      await supabase.from("notifications").insert({
+        recipient_id: offenderUserId,
+        title: "Trust Factor Penalty Issued",
+        body: `Your Trust Factor was reduced by -${penalty} pts following a moderator review: ${note}`,
+        task_id: taskRefId || null
+      });
+
+      setNotice(`Resolved ${table} & penalized ${prof?.full_name || 'user'} -${penalty} Trust Factor.`);
+    } else {
+      setNotice("Case resolved.");
+    }
+
+    await logAdminAction(`Resolved ${table === 'reports' ? 'report' : 'dispute'} (-${penalty} TF)`, table);
+    await load();
   };
 
   const promote = async (member: StaffMember) => {
@@ -6756,37 +6835,50 @@ function StaffWorkspace({
     if (tab === "reports")
       return (
         <section className="panel staff-queue">
-          <h3>Reports</h3>
+          <div className="panel-title-row">
+            <div>
+              <h3>User & Task Reports</h3>
+              <p>Review reports submitted by members. Resolving a report penalizes the reported user's Trust Factor.</p>
+            </div>
+            <button className="btn" onClick={() => void load()}>Refresh</button>
+          </div>
           {reports.length ? (
-            reports.map((report) => (
-              <article className="staff-case" key={report.id}>
-                <div>
-                  <strong>{report.reason}</strong>
-                  <span>
-                    {report.status} · filed{" "}
-                    {new Date(report.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="staff-actions">
-                  <button
-                    className="btn primary"
-                    onClick={() =>
-                      void resolveCase("reports", report.id, "resolved")
-                    }
-                  >
-                    Resolve
-                  </button>
-                  <button
-                    className="btn"
-                    onClick={() =>
-                      void resolveCase("reports", report.id, "dismissed")
-                    }
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </article>
-            ))
+            reports.map((report) => {
+              const reporter = members.find(m => m.id === report.reporter_id);
+              const reported = members.find(m => m.id === report.reported_user_id);
+              return (
+                <article className="staff-case" key={report.id} style={{ background: '#fff', padding: 18, borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ background: '#fee2e2', color: '#991b1b', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase' }}>Report</span>
+                      <strong style={{ fontSize: 15, color: '#0f172a' }}>{report.reason}</strong>
+                    </div>
+                    <div style={{ fontSize: 13, color: '#64748b', display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                      <span>Reported by: <strong style={{ color: '#334155' }}>{reporter?.full_name || 'Member'}</strong> (ID: <code style={{ fontSize: 11 }}>{report.reporter_id?.slice(0, 8)}...</code>)</span>
+                      {reported && (
+                        <span>Against: <strong style={{ color: '#b91c1c' }}>{reported.full_name}</strong> (ID: <code style={{ fontSize: 11 }}>{reported.id?.slice(0, 8)}...</code>)</span>
+                      )}
+                      <span>• Filed {new Date(report.created_at).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="staff-actions" style={{ gap: 8 }}>
+                    <button
+                      className="btn primary"
+                      style={{ background: '#d97706', borderColor: '#d97706' }}
+                      onClick={() => void resolveCase("reports", report.id, "resolved", report)}
+                    >
+                      Resolve & Penalize (-TF)
+                    </button>
+                    <button
+                      className="btn"
+                      onClick={() => void resolveCase("reports", report.id, "dismissed", report)}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </article>
+              );
+            })
           ) : (
             <p className="feed-message">No open reports.</p>
           )}
@@ -6795,37 +6887,46 @@ function StaffWorkspace({
     if (tab === "disputes")
       return (
         <section className="panel staff-queue">
-          <h3>Disputes</h3>
+          <div className="panel-title-row">
+            <div>
+              <h3>Task Disputes</h3>
+              <p>Disagreements filed by clients or applicants during active tasks.</p>
+            </div>
+            <button className="btn" onClick={() => void load()}>Refresh</button>
+          </div>
           {disputes.length ? (
-            disputes.map((dispute) => (
-              <article className="staff-case" key={dispute.id}>
-                <div>
-                  <strong>{dispute.reason}</strong>
-                  <span>
-                    {dispute.status} · filed{" "}
-                    {new Date(dispute.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="staff-actions">
-                  <button
-                    className="btn primary"
-                    onClick={() =>
-                      void resolveCase("disputes", dispute.id, "resolved")
-                    }
-                  >
-                    Resolve
-                  </button>
-                  <button
-                    className="btn"
-                    onClick={() =>
-                      void resolveCase("disputes", dispute.id, "dismissed")
-                    }
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </article>
-            ))
+            disputes.map((dispute) => {
+              const opener = members.find(m => m.id === dispute.opened_by);
+              return (
+                <article className="staff-case" key={dispute.id} style={{ background: '#fff', padding: 18, borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase' }}>Dispute</span>
+                      <strong style={{ fontSize: 15, color: '#0f172a' }}>{dispute.reason}</strong>
+                    </div>
+                    <div style={{ fontSize: 13, color: '#64748b', display: 'flex', gap: 12 }}>
+                      <span>Opened by: <strong style={{ color: '#334155' }}>{opener?.full_name || 'Participant'}</strong></span>
+                      <span>• Filed {new Date(dispute.created_at).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="staff-actions" style={{ gap: 8 }}>
+                    <button
+                      className="btn primary"
+                      style={{ background: '#d97706', borderColor: '#d97706' }}
+                      onClick={() => void resolveCase("disputes", dispute.id, "resolved", undefined, dispute)}
+                    >
+                      Resolve & Action
+                    </button>
+                    <button
+                      className="btn"
+                      onClick={() => void resolveCase("disputes", dispute.id, "dismissed", undefined, dispute)}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </article>
+              );
+            })
           ) : (
             <p className="feed-message">No open disputes.</p>
           )}
