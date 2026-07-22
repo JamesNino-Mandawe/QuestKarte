@@ -4007,9 +4007,11 @@ function FreshChat() {
 function FreshChatReal({
   session,
   initialTaskId = null,
+  targetStaffUser = null,
 }: {
   session: Session;
   initialTaskId?: string | null;
+  targetStaffUser?: { id: string; full_name: string; avatar_url?: string | null; trust_factor?: number } | null;
 }) {
   type ChatTask = {
     id: string;
@@ -4055,79 +4057,75 @@ function FreshChatReal({
       .select("conversation_id, last_read_at")
       .eq("user_id", session.user.id);
     const ids = (membershipRows || []).map((r) => r.conversation_id);
-    if (!ids.length) {
-      setConversations([]);
-      return;
-    }
+    let loadedConvs: ChatConversation[] = [];
 
-    const [{ data: convRows }, { data: allMembers }] = await Promise.all([
-      supabase
-        .from("conversations")
-        .select("id,task_id,updated_at,created_at")
-        .in("id", ids)
-        .order("updated_at", { ascending: false }),
-      supabase
-        .from("conversation_members")
-        .select("conversation_id,user_id")
-        .in("conversation_id", ids),
-    ]);
+    if (ids.length) {
+      const [{ data: convRows }, { data: allMembers }] = await Promise.all([
+        supabase
+          .from("conversations")
+          .select("id,task_id,updated_at,created_at")
+          .in("id", ids)
+          .order("updated_at", { ascending: false }),
+        supabase
+          .from("conversation_members")
+          .select("conversation_id,user_id")
+          .in("conversation_id", ids),
+      ]);
 
-    const participantIds = [
-      ...new Set(
-        (allMembers || [])
-          .map((r) => r.user_id)
-          .filter((id) => id !== session.user.id),
-      ),
-    ];
-    const taskIds = [
-      ...new Set(
-        (convRows || [])
-          .map((r) => r.task_id)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ];
+      const participantIds = [
+        ...new Set(
+          (allMembers || [])
+            .map((r) => r.user_id)
+            .filter((id) => id !== session.user.id),
+        ),
+      ];
+      const taskIds = [
+        ...new Set(
+          (convRows || [])
+            .map((r) => r.task_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
 
-    const [{ data: profiles }, { data: tasks }, { data: reviews }] = await Promise.all([
-      participantIds.length
-        ? supabase
-            .from("profiles")
-            .select("id,full_name,avatar_url")
-            .in("id", participantIds)
-        : Promise.resolve({ data: [] }),
-      taskIds.length
-        ? supabase
-            .from("tasks")
-            .select("id,title,status,commission_amount,deadline_at,payment_status,is_service_swap")
-            .in("id", taskIds)
-        : Promise.resolve({ data: [] }),
-      taskIds.length
-        ? supabase
-            .from("reviews")
-            .select("task_id")
-            .in("task_id", taskIds)
-        : Promise.resolve({ data: [] }),
-    ]);
+      const [{ data: profiles }, { data: tasks }, { data: reviews }] = await Promise.all([
+        participantIds.length
+          ? supabase
+              .from("profiles")
+              .select("id,full_name,avatar_url")
+              .in("id", participantIds)
+          : Promise.resolve({ data: [] }),
+        taskIds.length
+          ? supabase
+              .from("tasks")
+              .select("id,title,status,commission_amount,deadline_at,payment_status,is_service_swap")
+              .in("id", taskIds)
+          : Promise.resolve({ data: [] }),
+        taskIds.length
+          ? supabase
+              .from("reviews")
+              .select("task_id")
+              .in("task_id", taskIds)
+          : Promise.resolve({ data: [] }),
+      ]);
 
-    const reviewCounts = new Map<string, number>();
-    (reviews || []).forEach(r => {
-      reviewCounts.set(r.task_id, (reviewCounts.get(r.task_id) || 0) + 1);
-    });
+      const reviewCounts = new Map<string, number>();
+      (reviews || []).forEach(r => {
+        reviewCounts.set(r.task_id, (reviewCounts.get(r.task_id) || 0) + 1);
+      });
 
-    const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
-    const taskMap = new Map((tasks || []).map((t) => [t.id, {
-      ...t,
-      isOfficiallyFinished: t.status === "completed" && (reviewCounts.get(t.id) || 0) >= 2 && (t.is_service_swap || t.payment_status === 'paid')
-    }]));
+      const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
+      const taskMap = new Map((tasks || []).map((t) => [t.id, {
+        ...t,
+        isOfficiallyFinished: t.status === "completed" && (reviewCounts.get(t.id) || 0) >= 2 && (t.is_service_swap || t.payment_status === 'paid')
+      }]));
 
-    setConversations(
-      (convRows || []).map((c) => {
+      loadedConvs = (convRows || []).map((c) => {
         const otherId =
           (allMembers || []).find(
             (m) => m.conversation_id === c.id && m.user_id !== session.user.id,
           )?.user_id || "";
         const otherProfile = profileMap.get(otherId);
         const rawUnread = Boolean(c.updated_at && c.created_at && c.updated_at !== c.created_at && (!membershipRows?.find(r => r.conversation_id === c.id)?.last_read_at || new Date(c.updated_at) > new Date(membershipRows.find(r => r.conversation_id === c.id)!.last_read_at!)));
-        // If we are currently looking at this conversation, force unread to false to prevent race conditions during DB updates
         return {
           id: c.id,
           task_id: c.task_id,
@@ -4135,11 +4133,40 @@ function FreshChatReal({
           otherId,
           otherName: otherProfile?.full_name || "QuestKarte member",
           otherAvatar: otherProfile?.avatar_url || null,
-          title: c.task_id ? (taskMap.get(c.task_id)?.title || null) : null,
+          title: c.task_id ? (taskMap.get(c.task_id)?.title || null) : "Staff Direct Chat",
           isUnread: c.id === selected ? false : rawUnread,
         };
-      }),
-    );
+      });
+    }
+
+    if (targetStaffUser) {
+      const existing = loadedConvs.find(c => c.otherId === targetStaffUser.id);
+      if (!existing) {
+        const staffVirtualConv: ChatConversation = {
+          id: `staff_${targetStaffUser.id}`,
+          task_id: null,
+          task: null,
+          otherId: targetStaffUser.id,
+          otherName: targetStaffUser.full_name,
+          otherAvatar: targetStaffUser.avatar_url || null,
+          title: "Staff Direct Chat"
+        };
+        loadedConvs.unshift(staffVirtualConv);
+      }
+    }
+
+    setConversations(loadedConvs);
+
+    if (targetStaffUser) {
+      const targetConv = loadedConvs.find(c => c.otherId === targetStaffUser.id || c.id === `staff_${targetStaffUser.id}`);
+      if (targetConv) {
+        setSelected(targetConv.id);
+        void loadMessages(targetConv.id);
+      }
+    } else if (loadedConvs.length && !selected) {
+      setSelected(loadedConvs[0].id);
+      void loadMessages(loadedConvs[0].id);
+    }
   };
 
   const loadMessages = async (convId: string) => {
@@ -4248,14 +4275,25 @@ function FreshChatReal({
     if (!selected || !draft.trim()) return;
     const body = draft.trim();
     setDraft("");
+    let targetConvId = selected;
+    if (selected.startsWith("staff_") && targetStaffUser) {
+      const { data: rpcConvId, error: rpcErr } = await supabase.rpc("open_staff_conversation", {
+        p_target_user_id: targetStaffUser.id
+      });
+      if (!rpcErr && rpcConvId) {
+        targetConvId = rpcConvId;
+        setSelected(rpcConvId);
+      }
+    }
+
     // Use the RPC to send and trigger AI scanner
     const { error } = await supabase.rpc("send_message_safe", {
-      p_conversation_id: selected,
+      p_conversation_id: targetConvId,
       p_body: body,
       p_is_system: false,
     });
     if (error) setNotice(error.message);
-    else void loadMessages(selected);
+    else void loadMessages(targetConvId);
   };
 
   const uploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -6397,7 +6435,7 @@ function StaffWorkspace({
   const [rejectModal, setRejectModal] = useState<{ type: 'verification' | 'task'; record: VerificationRecord | StaffTaskRecord } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [taskPreview, setTaskPreview] = useState<Quest | null>(null);
-  const [activeStaffChatConvId, setActiveStaffChatConvId] = useState<string | null>(null);
+  const [activeStaffTarget, setActiveStaffTarget] = useState<StaffMember | null>(null);
   
   const logAdminAction = async (action: string, entity_type: string) => {
     if (!session) return;
@@ -6408,77 +6446,10 @@ function StaffWorkspace({
     });
   };
 
-  const startStaffConversation = async (targetUserId: string) => {
+  const startStaffConversation = async (member: StaffMember) => {
     if (!session) return;
-    setNotice("Opening staff conversation...");
-    
-    // 1. Try RPC first (bypasses RLS if SQL function installed)
-    const { data: rpcConvId, error: rpcErr } = await supabase.rpc("open_staff_conversation", {
-      p_target_user_id: targetUserId
-    });
-
-    if (!rpcErr && rpcConvId) {
-      setNotice("");
-      setActiveStaffChatConvId(rpcConvId);
-      return;
-    }
-
-    // 2. Client-side check for existing conversation between both users
-    const { data: myMemberships } = await supabase
-      .from("conversation_members")
-      .select("conversation_id")
-      .eq("user_id", session.user.id);
-      
-    const myConvIds = (myMemberships || []).map(m => m.conversation_id);
-    
-    if (myConvIds.length > 0) {
-      const { data: existingConv } = await supabase
-        .from("conversation_members")
-        .select("conversation_id")
-        .in("conversation_id", myConvIds)
-        .eq("user_id", targetUserId);
-        
-      const matched = (existingConv || []).find(c => myConvIds.includes(c.conversation_id));
-      if (matched?.conversation_id) {
-        setNotice("");
-        setActiveStaffChatConvId(matched.conversation_id);
-        return;
-      }
-    }
-
-    // 3. Fallback: Check if target staff has any active conversation
-    const { data: targetMemberships } = await supabase
-      .from("conversation_members")
-      .select("conversation_id")
-      .eq("user_id", targetUserId)
-      .limit(1);
-
-    if (targetMemberships && targetMemberships.length > 0) {
-      setNotice("");
-      setActiveStaffChatConvId(targetMemberships[0].conversation_id);
-      return;
-    }
-
-    // 4. Try insert new conversation row
-    const { data: newConv, error: convErr } = await supabase
-      .from("conversations")
-      .insert({ created_at: new Date().toISOString() })
-      .select("id")
-      .single();
-
-    if (!convErr && newConv) {
-      await supabase.from("conversation_members").insert([
-        { conversation_id: newConv.id, user_id: session.user.id },
-        { conversation_id: newConv.id, user_id: targetUserId }
-      ]);
-      setNotice("");
-      setActiveStaffChatConvId(newConv.id);
-      return;
-    }
-
-    // 5. Open staff chat modal view
     setNotice("");
-    setActiveStaffChatConvId("staff");
+    setActiveStaffTarget(member);
   };
 
   useEffect(() => {
@@ -7332,7 +7303,7 @@ function StaffWorkspace({
                           fontWeight: 'bold',
                           color: '#fff',
                         }}
-                        onClick={() => void startStaffConversation(member.id)}
+                        onClick={() => void startStaffConversation(member)}
                       >
                         {buttonText}
                       </button>
@@ -7418,21 +7389,21 @@ function StaffWorkspace({
 
   return (
     <div className="staff-workspace view">
-      {activeStaffChatConvId && session && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'grid', placeItems: 'center', padding: '16px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setActiveStaffChatConvId(null)}>
+      {activeStaffTarget && session && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'grid', placeItems: 'center', padding: '16px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setActiveStaffTarget(null)}>
           <div style={{ position: 'relative', width: 'min(100%, 980px)', height: 'min(88vh, 780px)', background: '#fff', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 35px 95px rgba(0,0,0,0.45)' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: '#101d57', color: '#fff' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontSize: '22px' }}>💬</span>
                 <div>
-                  <strong style={{ fontSize: '16px', display: 'block' }}>QuestKarte Staff Direct Chat</strong>
-                  <span style={{ fontSize: '11px', opacity: 0.8 }}>Secure 2-way staff messaging with photo, PDF, file attachment, and location sharing</span>
+                  <strong style={{ fontSize: '16px', display: 'block' }}>Staff 2-Way Chat: {activeStaffTarget.full_name}</strong>
+                  <span style={{ fontSize: '11px', opacity: 0.8 }}>Secure direct messaging with photo, PDF, file attachment, and location sharing</span>
                 </div>
               </div>
-              <button onClick={() => setActiveStaffChatConvId(null)} style={{ border: 0, background: 'rgba(255,255,255,0.18)', color: '#fff', width: '34px', height: '34px', borderRadius: '50%', fontSize: '22px', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>×</button>
+              <button onClick={() => setActiveStaffTarget(null)} style={{ border: 0, background: 'rgba(255,255,255,0.18)', color: '#fff', width: '34px', height: '34px', borderRadius: '50%', fontSize: '22px', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>×</button>
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <FreshChatReal session={session} />
+              <FreshChatReal session={session} targetStaffUser={activeStaffTarget} />
             </div>
           </div>
         </div>
