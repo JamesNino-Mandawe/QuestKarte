@@ -4192,6 +4192,10 @@ function FreshChatReal({
   };
 
   const loadMessages = async (convId: string) => {
+    if (!convId || convId.startsWith("staff_")) {
+      setMessages([]);
+      return;
+    }
     const { data, error } = await supabase
       .from("messages")
       .select("id,sender_id,body,attachment_url,attachment_type,created_at")
@@ -4305,6 +4309,9 @@ function FreshChatReal({
       if (!rpcErr && rpcConvId) {
         targetConvId = rpcConvId;
         setSelected(rpcConvId);
+      } else {
+        setNotice("Staff Chat SQL function missing. Please run supabase/20260723_staff_chat_rpc.sql in your Supabase SQL Editor.");
+        return;
       }
     }
 
@@ -4324,6 +4331,21 @@ function FreshChatReal({
     if (!file) return;
     e.target.value = '';
     if (file.size > 25 * 1024 * 1024) { setNotice('File too large (max 25MB).'); return; }
+
+    let targetConvId = selected;
+    if (selected.startsWith("staff_") && targetStaffUser) {
+      const { data: rpcConvId, error: rpcErr } = await supabase.rpc("open_staff_conversation", {
+        p_target_user_id: targetStaffUser.id
+      });
+      if (!rpcErr && rpcConvId) {
+        targetConvId = rpcConvId;
+        setSelected(rpcConvId);
+      } else {
+        setNotice("Staff Chat SQL function missing. Please run supabase/20260723_staff_chat_rpc.sql in your Supabase SQL Editor.");
+        return;
+      }
+    }
+
     setNotice('Uploading attachment...');
     const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -4331,7 +4353,7 @@ function FreshChatReal({
     const attachType = isImage ? 'image' : 'file';
     const ext = file.name.split('.').pop() || 'bin';
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `chat/${session.user.id}/${selected}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${ext}__${safeName}`;
+    const path = `chat/${session.user.id}/${targetConvId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${ext}__${safeName}`;
     const msgBody = isImage ? 'Sent a photo' : isPdf ? 'Sent a PDF' : isWord ? 'Sent a Word document' : `Sent file: ${file.name}`;
 
     // Read base64 fallback only for small files (<500KB)
@@ -4364,7 +4386,7 @@ function FreshChatReal({
 
     // Try send via RPC
     const { error: dbErr } = await supabase.rpc('send_message_safe', {
-      p_conversation_id: selected,
+      p_conversation_id: targetConvId,
       p_body: msgBody,
       p_attachment_url: finalAttachmentUrl,
       p_attachment_type: attachType,
@@ -4374,7 +4396,7 @@ function FreshChatReal({
     if (dbErr) {
       // Direct insertion fallback
       const { error: directErr } = await supabase.from('messages').insert({
-        conversation_id: selected,
+        conversation_id: targetConvId,
         sender_id: session.user.id,
         body: msgBody,
         attachment_url: finalAttachmentUrl,
@@ -4382,10 +4404,10 @@ function FreshChatReal({
         is_system: false
       });
       setNotice(directErr ? 'Error sending file: ' + directErr.message : '');
-      if (!directErr) void loadMessages(selected);
+      if (!directErr) void loadMessages(targetConvId);
     } else {
       setNotice('');
-      void loadMessages(selected);
+      void loadMessages(targetConvId);
     }
   };
 
