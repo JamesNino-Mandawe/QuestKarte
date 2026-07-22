@@ -4041,13 +4041,34 @@ function FreshChatReal({
     created_at: string;
   };
 
-  const [conversations, setConversations] = useState<ChatConversation[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ChatConversation[]>(() => {
+    if (targetStaffUser) {
+      return [
+        {
+          id: `staff_${targetStaffUser.id}`,
+          task_id: null,
+          task: null,
+          otherId: targetStaffUser.id,
+          otherName: targetStaffUser.full_name,
+          otherAvatar: targetStaffUser.avatar_url || null,
+          title: "Staff Direct Chat",
+        },
+      ];
+    }
+    return [];
+  });
+  const [selected, setSelected] = useState<string | null>(() => {
+    if (targetStaffUser) {
+      return `staff_${targetStaffUser.id}`;
+    }
+    return null;
+  });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState("");
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [loadingConvs, setLoadingConvs] = useState(!targetStaffUser);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load conversations
@@ -4367,7 +4388,15 @@ function FreshChatReal({
     }
   };
 
-  if (!conversations.length)
+  if (loadingConvs)
+    return (
+      <div className="fresh-empty-view view" style={{ padding: '60px 20px', textAlign: 'center' }}>
+        <div className="empty-icon">💬</div>
+        <p style={{ color: '#64748b', fontSize: '14px', marginTop: '12px' }}>Loading staff conversation...</p>
+      </div>
+    );
+
+  if (!conversations.length && !targetStaffUser)
     return (
       <div className="fresh-empty-view view">
         <div className="empty-icon">💬</div>
