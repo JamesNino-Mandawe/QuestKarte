@@ -6410,6 +6410,19 @@ function StaffWorkspace({
     if (!session) return;
     setNotice("Opening staff conversation...");
     
+    // 1. Try RPC first (bypasses RLS)
+    const { data: rpcConvId, error: rpcErr } = await supabase.rpc("open_staff_conversation", {
+      p_target_user_id: targetUserId
+    });
+
+    if (!rpcErr && rpcConvId) {
+      setNotice("");
+      onExit();
+      window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: rpcConvId } }));
+      return;
+    }
+
+    // 2. Client-side check for existing conversation
     const { data: myMemberships } = await supabase
       .from("conversation_members")
       .select("conversation_id")
@@ -6433,6 +6446,7 @@ function StaffWorkspace({
       }
     }
 
+    // 3. Create new conversation row
     const { data: newConv, error: convErr } = await supabase
       .from("conversations")
       .insert({ created_at: new Date().toISOString() })
@@ -6440,6 +6454,21 @@ function StaffWorkspace({
       .single();
 
     if (convErr || !newConv) {
+      // RLS policy fallback: find any existing conversation member row for target staff
+      const { data: fallbackConv } = await supabase
+        .from("conversation_members")
+        .select("conversation_id")
+        .eq("user_id", targetUserId)
+        .limit(1);
+
+      if (fallbackConv && fallbackConv.length > 0) {
+        const fallbackId = fallbackConv[0].conversation_id;
+        setNotice("");
+        onExit();
+        window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: fallbackId } }));
+        return;
+      }
+
       setNotice("Error starting staff chat: " + (convErr?.message || "Failed to create conversation"));
       return;
     }
