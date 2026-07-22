@@ -4884,10 +4884,38 @@ function FreshAccount({
     setEditing(false);
     setNotice("Profile updated.");
   };
+  const [liveTrustScore, setLiveTrustScore] = useState<number | null>(null);
+
+  const loadLiveTrust = async () => {
+    if (!session?.user?.id) return;
+    const [profRes, eventsRes] = await Promise.all([
+      supabase.from('profiles').select('trust_factor').eq('id', session.user.id).maybeSingle(),
+      supabase.from('trust_events').select('points').eq('user_id', session.user.id)
+    ]);
+    const evList = eventsRes.data || [];
+    const netSum = evList.reduce((acc: number, item: any) => acc + (item.points || 0), 0);
+    const base = profRes.data?.trust_factor ?? 80;
+    setLiveTrustScore(Math.min(100, Math.max(0, base + netSum)));
+  };
+
+  useEffect(() => {
+    void loadLiveTrust();
+    const channel = supabase
+      .channel("account-trust-score-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "trust_events" }, () => void loadLiveTrust())
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => void loadLiveTrust())
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]);
+
   const visible = member || profile;
   const verified = visible?.verification_status === "verified";
   const displayName = visible?.full_name || "Member";
-  const trustScore = visible?.trust_factor || 0;
+  const trustScore = liveTrustScore !== null ? liveTrustScore : (visible?.trust_factor || 80);
   const trustRank = getTrustRank(trustScore);
   return (
     <div className="fresh-account view">
