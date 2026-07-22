@@ -4177,6 +4177,7 @@ function FreshChatReal({
     }
 
     setConversations(loadedConvs);
+    setLoadingConvs(false);
 
     if (targetStaffUser) {
       const targetConv = loadedConvs.find(c => c.otherId === targetStaffUser.id || c.id === `staff_${targetStaffUser.id}`);
