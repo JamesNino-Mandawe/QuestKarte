@@ -3822,8 +3822,6 @@ function FreshTasks({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user.id]);
 
-  const entries = tab === "posted" ? posted : applied;
-
   return (
     <div className="fresh-tasks view">
       <section className="panel task-workspace-head">
@@ -3858,9 +3856,18 @@ function FreshTasks({
         <section className="panel feed-message">
           Loading your task workspace...
         </section>
-      ) : entries.length ? (
-        <section className="task-work-list">
-          {tab === "posted" ? posted.filter(task => !task.hidden_by_poster && localStorage.getItem('dismissed-task-' + task.id) !== 'true').map((task) => (
+      ) : (() => {
+          const filteredPosted = posted.filter(task => !task.hidden_by_poster && localStorage.getItem('dismissed-task-' + task.id) !== 'true');
+          const filteredApplied = applied.filter(application => application.task && !application.task.hidden_by_assignee);
+          const filteredEntries = tab === 'posted' ? filteredPosted : filteredApplied;
+          if (!filteredEntries.length) return (
+            <section className="panel feed-message">
+              <strong>{tab === 'posted' ? 'No active posted tasks.' : 'No active applications.'}</strong>
+              <span>{tab === 'posted' ? 'Your approved tasks will appear here. Post a new task to get started.' : 'When you apply for a task and get accepted, it will appear here.'}</span>
+            </section>
+          );
+          return <section className="task-work-list">
+          {tab === "posted" ? filteredPosted.map((task) => (
                 <TaskLifecycleCard
                   key={task.id}
                   task={task}
@@ -3881,25 +3888,8 @@ function FreshTasks({
                     />
                   ),
               )}
-        </section>
-      ) : (
-        <div className="fresh-empty-view">
-          <div className="empty-icon">□</div>
-          <h2>
-            {tab === "posted" ? "No posted tasks yet" : "No applications yet"}
-          </h2>
-          <p>
-            {tab === "posted"
-              ? "Create a clear request and submit it for review."
-              : "Browse approved tasks and apply when your skills are a good fit."}
-          </p>
-          {tab === "posted" && (
-            <button className="btn primary" onClick={onGoPost}>
-              Post your first task
-            </button>
-          )}
-        </div>
-      )}
+        </section>;
+      })()}
     </div>
   );
 }
