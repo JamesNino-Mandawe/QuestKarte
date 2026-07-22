@@ -10437,7 +10437,7 @@ function HelpSafetyWidget({ isGuest }: { isGuest?: boolean }) {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9000, background: '#159b78', color: '#fff', border: 'none', borderRadius: '50px', padding: '12px 20px', fontWeight: 'bold', boxShadow: '0 10px 25px rgba(21,155,120,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <button onClick={() => setOpen(true)} className="help-safety-btn" style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9000, background: '#159b78', color: '#fff', border: 'none', borderRadius: '50px', padding: '12px 20px', fontWeight: 'bold', boxShadow: '0 10px 25px rgba(21,155,120,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 18, background: 'rgba(255,255,255,0.2)', width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>?</span> Help & Safety
       </button>
       {open && (
