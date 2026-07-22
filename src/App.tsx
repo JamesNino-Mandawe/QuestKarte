@@ -6123,14 +6123,18 @@ function AdminAnalyticsDashboard() {
 
       <div className="analytics-card">
         <h3 className="analytics-card-title">Trust Factor Distribution</h3>
-        <div className="trust-container">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginTop: 24, padding: '12px 8px' }}>
           {trustStats.map((stat, i) => (
-            <div className="trust-col" key={i}>
-              <div className="trust-pct" style={{ color: stat.color === '#e2e8f0' ? '#94a3b8' : stat.color }}>{stat.pct}%</div>
-              <div className="trust-bar" style={{ height: stat.h, background: stat.color }}></div>
-              <div className="trust-label">
-                <span style={{ fontSize: 18, display: 'block', marginBottom: 4 }}>{stat.emoji}</span>
-                {stat.label}
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: stat.color === '#e2e8f0' ? '#94a3b8' : stat.color, marginBottom: 8 }}>
+                {stat.pct}%
+              </div>
+              <div style={{ width: '100%', height: 80, background: 'rgba(255,255,255,0.06)', borderRadius: 10, display: 'flex', alignItems: 'flex-end', padding: 4, marginBottom: 12 }}>
+                <div style={{ width: '100%', height: stat.h, background: stat.color, borderRadius: 6, transition: 'height 0.4s ease-in-out' }}></div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <span style={{ fontSize: 22, display: 'block', marginBottom: 4 }}>{stat.emoji}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.3px' }}>{stat.label}</span>
               </div>
             </div>
           ))}
@@ -6221,6 +6225,8 @@ function StaffWorkspace({
       roleResult,
       categoryResult,
       auditResult,
+      pastTaskResult,
+      pastVerifResult,
     ] = await Promise.all([
       supabase
         .from("tasks")
@@ -6261,7 +6267,19 @@ function StaffWorkspace({
         .from("admin_audit_logs")
           .select("id,action,entity_type,created_at,admin_id")
         .order("created_at", { ascending: false })
-        .limit(15),
+        .limit(30),
+      supabase
+        .from("tasks")
+        .select("id,title,moderation_state,moderated_by,moderated_at,created_at")
+        .not("moderated_by", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(30),
+      supabase
+        .from("verification_requests")
+        .select("id,type,status,user_id,created_at")
+        .neq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(30),
     ]);
     setTasks((taskResult.data || []) as StaffTaskRecord[]);
     setVerifications((verificationResult.data || []) as VerificationRecord[]);
@@ -6270,15 +6288,34 @@ function StaffWorkspace({
     setMembers((memberResult.data || []) as StaffMember[]);
     setRoles((roleResult.data || []) as { user_id: string; role: string }[]);
     setCategories((categoryResult.data || []) as StaffCategory[]);
-    setAudit(
-      (auditResult.data || []) as {
-        id: string;
-        action: string;
-        entity_type: string;
-        created_at: string;
-        admin_id?: string;
-      }[],
-    );
+
+    const explicitAudit = (auditResult.data || []).map((a: any) => ({
+      id: a.id,
+      action: a.action,
+      entity_type: a.entity_type,
+      created_at: a.created_at,
+      admin_id: a.admin_id
+    }));
+
+    const pastTasks = (pastTaskResult.data || []).map((t: any) => ({
+      id: 'task-' + t.id,
+      action: `${t.moderation_state === 'approved' ? 'Approved' : 'Rejected'} task: ${t.title}`,
+      entity_type: 'task',
+      created_at: t.moderated_at || t.created_at,
+      admin_id: t.moderated_by
+    }));
+
+    const pastVerifs = (pastVerifResult.data || []).map((v: any) => ({
+      id: 'verif-' + v.id,
+      action: `${v.status === 'approved' ? 'Approved' : 'Rejected'} ${v.type} verification`,
+      entity_type: 'verification',
+      created_at: v.created_at,
+      admin_id: undefined
+    }));
+
+    const combined = [...explicitAudit, ...pastTasks, ...pastVerifs];
+    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setAudit(combined);
     const firstError = [
       taskResult.error,
       verificationResult.error,
