@@ -4259,41 +4259,47 @@ function FreshChatReal({
   };
 
   const uploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!selected) return;
+    if (!selected || !session) return;
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
     if (file.size > 25 * 1024 * 1024) { setNotice('File too large (max 25MB).'); return; }
     setNotice('Uploading attachment...');
     const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf';
-    const isWord = file.type.includes('wordprocessingml') || file.type === 'application/msword';
-    const attachType = isImage ? 'image' : 'document';
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isWord = file.type.includes('wordprocessingml') || file.type === 'application/msword' || file.name.toLowerCase().endsWith('.docx');
+    const attachType = isImage ? 'image' : 'file';
     const ext = file.name.split('.').pop() || 'bin';
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `${session.user.id}/${selected}/${crypto.randomUUID()}.${ext}__${safeName}`;
+    const path = `chat/${session.user.id}/${selected}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${ext}__${safeName}`;
     const msgBody = isImage ? 'Sent a photo' : isPdf ? 'Sent a PDF' : isWord ? 'Sent a Word document' : `Sent file: ${file.name}`;
 
-    // Read base64 fallback first
+    // Read base64 fallback only for small files (<500KB)
     let base64Url: string | null = null;
-    try {
-      base64Url = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-    } catch { /* ignore */ }
+    if (file.size < 500000) {
+      try {
+        base64Url = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+      } catch { /* ignore */ }
+    }
 
     let finalAttachmentUrl = path;
 
     // Try Supabase Storage upload
-    const { error: uploadError } = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('task-attachments')
-      .upload(path, file, { contentType: file.type || 'application/octet-stream' });
-    
-    if (uploadError && base64Url) {
-      // Storage upload failed, fallback to base64 Data URL!
+      .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
+
+    if (!uploadError && uploadData) {
+      const { data: pub } = supabase.storage.from('task-attachments').getPublicUrl(path);
+      if (pub?.publicUrl) finalAttachmentUrl = pub.publicUrl;
+    } else if (base64Url) {
       finalAttachmentUrl = base64Url;
+    } else if (uploadError) {
+      setNotice(`Storage upload warning: ${uploadError.message}. Retrying...`);
     }
 
     // Try send via RPC
