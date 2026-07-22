@@ -6276,6 +6276,7 @@ type StaffMember = {
   city: string | null;
   trust_factor: number;
   completed_tasks_count: number;
+  avatar_url?: string | null;
 };
 type StaffCategory = {
   id: string;
@@ -6488,6 +6489,12 @@ function StaffWorkspace({
   const [rejectReason, setRejectReason] = useState("");
   const [taskPreview, setTaskPreview] = useState<Quest | null>(null);
   const [activeStaffTarget, setActiveStaffTarget] = useState<StaffMember | null>(null);
+  const [profileModal, setProfileModal] = useState<StaffMember | null>(null);
+  const [enlargedAvatar, setEnlargedAvatar] = useState<string | null>(null);
+
+  const myProfile = members.find((m) => m.id === session?.user?.id);
+  const displayName = myProfile?.full_name || (isAdmin ? "Administrator" : "Moderator");
+  const avatarUrl = myProfile?.avatar_url;
   
   const logAdminAction = async (action: string, entity_type: string) => {
     if (!session) return;
@@ -6554,7 +6561,7 @@ function StaffWorkspace({
         .order("created_at", { ascending: true }),
       supabase
         .from("profiles")
-        .select("id,full_name,city,trust_factor,completed_tasks_count")
+        .select("id,full_name,city,trust_factor,completed_tasks_count,avatar_url")
         .order("full_name"),
       supabase
         .from("user_roles")
@@ -7323,14 +7330,54 @@ function StaffWorkspace({
               const isSelf = member.id === session?.user?.id;
               const buttonText = memberRole === "admin" ? "💬 Chat with Admin" : "💬 Chat with Staff";
               return (
-                <article className="staff-case" key={member.id}>
-                  <div>
-                    <strong>
-                      {member.full_name} {isSelf ? "(You)" : ""}
-                    </strong>
-                    <span>
-                      {memberRole === "admin" ? "Administrator" : "Moderator"} · Trust Factor {member.trust_factor}
-                    </span>
+                <article className="staff-case" key={member.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div
+                      onClick={() => {
+                        if (member.avatar_url) setEnlargedAvatar(member.avatar_url);
+                        else setProfileModal(member);
+                      }}
+                      title="Click to view staff profile photo"
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '14px',
+                        border: '2px solid rgba(28, 146, 134, 0.45)',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        background: 'linear-gradient(135deg, #101d38, #1d3557)',
+                        display: 'grid',
+                        placeItems: 'center',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.08)';
+                        e.currentTarget.style.borderColor = '#1C9286';
+                        e.currentTarget.style.boxShadow = '0 0 16px rgba(28, 146, 134, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.borderColor = 'rgba(28, 146, 134, 0.45)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.18)';
+                      }}
+                    >
+                      {member.avatar_url ? (
+                        <img src={member.avatar_url} alt={member.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span style={{ font: "800 19px 'Manrope', sans-serif", color: '#f4ce62' }}>
+                          {member.full_name[0]?.toUpperCase() || "S"}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <strong style={{ fontSize: '15px' }}>
+                        {member.full_name} {isSelf ? "(You)" : ""}
+                      </strong>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>
+                        {memberRole === "admin" ? "Administrator" : "Moderator"} · Trust Factor {member.trust_factor}
+                      </span>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span
@@ -7466,6 +7513,56 @@ function StaffWorkspace({
           onClose={() => setTaskPreview(null)} 
         />
       )}
+      {enlargedAvatar && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999999, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)" }} onClick={() => setEnlargedAvatar(null)}>
+          <div style={{ position: 'relative', maxWidth: '480px', width: '100%', background: '#fff', borderRadius: '24px', overflow: 'hidden', padding: '24px', textAlign: 'center', boxShadow: '0 30px 90px rgba(0,0,0,0.5)' }} onClick={(e) => e.stopPropagation()}>
+            <button style={{ position: 'absolute', top: '16px', right: '16px', background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', fontSize: '18px', cursor: 'pointer' }} onClick={() => setEnlargedAvatar(null)}>×</button>
+            <img src={enlargedAvatar} alt="Staff Profile Photo" style={{ width: '100%', maxHeight: '420px', objectFit: 'cover', borderRadius: '16px', marginBottom: '14px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }} />
+            <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: 600 }}>QuestKarte Staff Profile Photo</p>
+          </div>
+        </div>
+      )}
+
+      {profileModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999999, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)" }} onClick={() => setProfileModal(null)}>
+          <div style={{ position: 'relative', maxWidth: '440px', width: '100%', background: '#fff', borderRadius: '24px', overflow: 'hidden', padding: '28px', textAlign: 'center', boxShadow: '0 30px 90px rgba(0,0,0,0.5)' }} onClick={(e) => e.stopPropagation()}>
+            <button style={{ position: 'absolute', top: '16px', right: '16px', background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', fontSize: '18px', cursor: 'pointer' }} onClick={() => setProfileModal(null)}>×</button>
+            <div style={{ width: '92px', height: '92px', borderRadius: '50%', margin: '0 auto 16px', border: '4px solid #f4ce62', overflow: 'hidden', background: 'linear-gradient(135deg, #101d38, #263d65)', display: 'grid', placeItems: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+              {profileModal.avatar_url ? (
+                <img src={profileModal.avatar_url} alt={profileModal.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} onClick={() => setEnlargedAvatar(profileModal.avatar_url!)} />
+              ) : (
+                <span style={{ fontSize: '38px', color: '#f4ce62', fontWeight: 800 }}>{profileModal.full_name[0]?.toUpperCase()}</span>
+              )}
+            </div>
+            <h3 style={{ margin: '0 0 6px', fontSize: '20px', color: '#0f172a', fontWeight: 800 }}>{profileModal.full_name}</h3>
+            <span style={{ display: 'inline-block', padding: '4px 14px', borderRadius: '999px', background: '#e0f2fe', color: '#0369a1', fontSize: '12px', fontWeight: 700, marginBottom: '16px' }}>
+              {roles.find(r => r.user_id === profileModal.id)?.role === 'admin' ? 'Administrator' : 'Moderator'}
+            </span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '14px', borderRadius: '16px', marginBottom: '20px' }}>
+              <div>
+                <small style={{ color: '#64748b', fontSize: '11px', display: 'block' }}>Trust Factor</small>
+                <strong style={{ color: '#b45309', fontSize: '16px' }}>{profileModal.trust_factor} pts</strong>
+              </div>
+              <div>
+                <small style={{ color: '#64748b', fontSize: '11px', display: 'block' }}>Completed Quests</small>
+                <strong style={{ color: '#0f172a', fontSize: '16px' }}>{profileModal.completed_tasks_count}</strong>
+              </div>
+            </div>
+            {profileModal.id !== session?.user?.id && (
+              <button
+                className="btn primary"
+                style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'linear-gradient(135deg, #1C9286, #159b78)', color: '#fff', fontWeight: 800, border: 'none', cursor: 'pointer' }}
+                onClick={() => {
+                  setProfileModal(null);
+                  void startStaffConversation(profileModal);
+                }}
+              >
+                💬 Open Direct Staff Chat
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       <section className="staff-workspace-hero">
         <div>
           <span className="eyebrow">QuestKarte staff access</span>
@@ -7476,13 +7573,57 @@ function StaffWorkspace({
               : "Safety decisions, task review, verification, reports, and disputes."}
           </p>
         </div>
-        <div className="staff-identity">
-          <span>{isAdmin ? "A" : "M"}</span>
-          <div>
-            <strong>{isAdmin ? "Administrator" : "Moderator"}</strong>
-            <small>{session?.user.email || "Preview account"}</small>
+        <div className="staff-identity" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div
+            onClick={() => {
+              if (avatarUrl) setEnlargedAvatar(avatarUrl);
+              else if (myProfile) setProfileModal(myProfile);
+            }}
+            title="Click to enlarge profile picture"
+            style={{
+              position: 'relative',
+              width: '56px',
+              height: '56px',
+              borderRadius: '16px',
+              border: '2px solid rgba(237, 199, 83, 0.85)',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+              background: 'linear-gradient(135deg, #101d38, #263d65)',
+              display: 'grid',
+              placeItems: 'center',
+              transition: 'all 0.22s ease-in-out',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.08)';
+              e.currentTarget.style.borderColor = '#f4ce62';
+              e.currentTarget.style.boxShadow = '0 0 22px rgba(237, 199, 83, 0.7)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.borderColor = 'rgba(237, 199, 83, 0.85)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.3)';
+            }}
+          >
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <span style={{ font: "800 24px 'Manrope', sans-serif", color: '#f4ce62' }}>
+                {displayName[0]?.toUpperCase() || (isAdmin ? "A" : "M")}
+              </span>
+            )}
           </div>
-          <button className="btn" onClick={onExit}>
+          <div>
+            <strong style={{ fontSize: '15px', color: '#fff', fontWeight: 800 }}>{displayName}</strong>
+            <small style={{ fontSize: '11px', color: '#b9c6da', marginTop: '2px', display: 'block' }}>
+              {isAdmin ? "Administrator" : "Moderator"} · {session?.user.email || "Staff"}
+            </small>
+          </div>
+          <button className="btn" onClick={onExit} style={{ marginLeft: '10px' }}>
             Sign out
           </button>
         </div>
