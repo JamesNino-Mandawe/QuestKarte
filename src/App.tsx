@@ -6001,48 +6001,52 @@ function AdminAnalyticsDashboard() {
 
   useEffect(() => {
     async function loadData() {
-      const [{ data: tasks }, { data: profiles }] = await Promise.all([
-        supabase.from("tasks").select("status, created_at, category:categories(name)"),
-        supabase.from("profiles").select("trust_factor")
+      const [{ data: tasksData }, { data: profilesData }, { data: categoriesData }] = await Promise.all([
+        supabase.from("tasks").select("status, created_at, category_id"),
+        supabase.from("profiles").select("trust_factor"),
+        supabase.from("categories").select("id, name")
       ]);
 
-      if (tasks) {
-        const completed = tasks.filter(t => t.status === "completed");
-        setCompletedQuests(completed.length);
-        
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        const bins = Array(12).fill(0);
-        const binSizeMs = (30 * 24 * 60 * 60 * 1000) / 12;
-        
-        completed.forEach(t => {
-          const tDate = new Date(t.created_at);
-          if (tDate >= thirtyDaysAgo) {
-            const diffMs = tDate.getTime() - thirtyDaysAgo.getTime();
-            const binIdx = Math.min(11, Math.floor(diffMs / binSizeMs));
-            bins[binIdx]++;
-          }
-        });
-        
-        const maxBin = Math.max(1, ...bins);
-        const dynamicBars = bins.map((val, i) => {
-          const date = new Date(thirtyDaysAgo.getTime() + (i * binSizeMs));
-          return {
-            label: (i === 0 || i === 5 || i === 11) ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '',
-            h: Math.max(5, Math.round((val / maxBin) * 100)) + '%',
-            active: i === 11
-          };
-        });
-        setRevBars(dynamicBars);
+      const tasks = tasksData || [];
+      const profiles = profilesData || [];
+      const categoriesList = categoriesData || [];
+      const catMap = new Map(categoriesList.map(c => [c.id, c.name]));
 
-        const catCounts: Record<string, number> = {};
-        let totalCats = 0;
-        tasks.forEach(t => {
-          // @ts-ignore
-          const catName = t.category?.name || "Uncategorized";
-          catCounts[catName] = (catCounts[catName] || 0) + 1;
-          totalCats++;
-        });
+      const completed = tasks.filter(t => t.status === "completed");
+      setCompletedQuests(completed.length);
+      
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const bins = Array(12).fill(0);
+      const binSizeMs = (30 * 24 * 60 * 60 * 1000) / 12;
+      
+      completed.forEach(t => {
+        const tDate = new Date(t.created_at);
+        if (tDate >= thirtyDaysAgo) {
+          const diffMs = tDate.getTime() - thirtyDaysAgo.getTime();
+          const binIdx = Math.min(11, Math.floor(diffMs / binSizeMs));
+          bins[binIdx]++;
+        }
+      });
+      
+      const maxBin = Math.max(1, ...bins);
+      const dynamicBars = bins.map((val, i) => {
+        const date = new Date(thirtyDaysAgo.getTime() + (i * binSizeMs));
+        return {
+          label: (i === 0 || i === 5 || i === 11) ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '',
+          h: Math.max(5, Math.round((val / maxBin) * 100)) + '%',
+          active: i === 11
+        };
+      });
+      setRevBars(dynamicBars);
+
+      const catCounts: Record<string, number> = {};
+      let totalCats = 0;
+      tasks.forEach(t => {
+        const catName = (t.category_id && catMap.get(t.category_id)) || "General";
+        catCounts[catName] = (catCounts[catName] || 0) + 1;
+        totalCats++;
+      });
         
         const colors = ['#3b82f6', '#a855f7', '#22c55e', '#f97316', '#ef4444', '#0ea5e9', '#eab308'];
         const sortedCats = Object.entries(catCounts)
@@ -6054,7 +6058,6 @@ function AdminAnalyticsDashboard() {
             color: colors[i % colors.length]
           }));
         setCategories(sortedCats);
-      }
 
       if (profiles) {
         let bronze=0, silver=0, gold=0, plat=0, cert=0;
@@ -6174,7 +6177,7 @@ function StaffWorkspace({
   const [roles, setRoles] = useState<{ user_id: string; role: string }[]>([]);
   const [categories, setCategories] = useState<StaffCategory[]>([]);
   const [audit, setAudit] = useState<
-      { id: string; action: string; entity_type: string; created_at: string; profiles?: { full_name: string } }[]
+      { id: string; action: string; entity_type: string; created_at: string; admin_id?: string; profiles?: { full_name: string } }[]
     >([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
@@ -6191,7 +6194,7 @@ function StaffWorkspace({
     await supabase.from("admin_audit_logs").insert({
       action,
       entity_type,
-      user_id: session.user.id
+      admin_id: session.user.id
     });
   };
 
@@ -6256,7 +6259,7 @@ function StaffWorkspace({
         .order("name"),
       supabase
         .from("admin_audit_logs")
-          .select("id,action,entity_type,created_at,profiles(full_name)")
+          .select("id,action,entity_type,created_at,admin_id")
         .order("created_at", { ascending: false })
         .limit(15),
     ]);
@@ -6273,6 +6276,7 @@ function StaffWorkspace({
         action: string;
         entity_type: string;
         created_at: string;
+        admin_id?: string;
       }[],
     );
     const firstError = [
@@ -6885,17 +6889,21 @@ function StaffWorkspace({
           </button>
         </div>
         {audit.length ? (
-            audit.map((entry) => (
-              <article className="staff-case" key={entry.id}>
-                <div>
-                  <strong>{entry.action}</strong>
-                  <span>
-                    {entry.entity_type} {entry.profiles?.full_name ? "by " + entry.profiles.full_name : ""} •{" "}
-                    {new Date(entry.created_at).toLocaleString()}
-                  </span>
-                </div>
-              </article>
-            ))
+            audit.map((entry) => {
+              const staffMember = members.find(m => m.id === entry.admin_id);
+              const staffName = staffMember ? staffMember.full_name : (entry as any).profiles?.full_name || "Admin";
+              return (
+                <article className="staff-case" key={entry.id}>
+                  <div>
+                    <strong>{entry.action}</strong>
+                    <span>
+                      Tag: {entry.entity_type} • By {staffName} •{" "}
+                      {new Date(entry.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                </article>
+              );
+            })
           ) : (
           <p className="feed-message">
             No staff actions have been recorded yet.
