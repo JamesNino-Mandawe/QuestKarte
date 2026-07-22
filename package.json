@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.5",
+    "docx": "^9.7.1",
     "leaflet": "^1.9.4",
+    "pptxgenjs": "^4.0.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-leaflet": "^5.0.0"

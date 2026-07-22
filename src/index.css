@@ -672,6 +672,40 @@ body,button,input,textarea{font-family:'DM Sans',ui-sans-serif,system-ui,sans-se
    PERFECT MOBILE UI OVERHAUL (Zero Floating Obstructions & Clean Topbar)
    ========================================================================== */
 
+.help-safety-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9000;
+  background: #159b78;
+  color: #ffffff;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 20px;
+  font-weight: bold;
+  box-shadow: 0 10px 25px rgba(21, 155, 120, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  transition: transform 0.2s ease;
+}
+
+.help-safety-btn:hover {
+  transform: translateY(-2px);
+}
+
+.help-icon-circle {
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.25);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
 @media (min-width: 769px) {
   .mobile-search-toggle-btn {
     display: none !important;
@@ -679,9 +713,12 @@ body,button,input,textarea{font-family:'DM Sans',ui-sans-serif,system-ui,sans-se
 }
 
 @media (max-width: 768px) {
-  /* 1. HIDE floating Help & Safety button on mobile so it NEVER blocks the screen! */
+  /* 1. HIDE floating Help & Safety button on mobile so it NEVER blocks bottom navigation! */
   .help-safety-btn {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   /* 2. Topbar Header Mobile Rules */

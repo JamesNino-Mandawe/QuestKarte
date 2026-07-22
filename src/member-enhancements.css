@@ -24,6 +24,57 @@
 /* Device camera and application-review details */
 .camera-capture-backdrop{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:24px;background:rgba(7,17,47,.68);backdrop-filter:blur(8px)}.camera-capture-modal{width:min(620px,100%);border:1px solid #d3deef;border-radius:24px;padding:26px;background:#fff;box-shadow:0 28px 72px rgba(6,17,52,.38);color:#172754}.camera-capture-modal header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}.camera-capture-modal h2{margin:4px 0 0;color:#0b1f63;font:800 25px Manrope,system-ui,sans-serif}.camera-capture-video{display:block;width:100%;max-height:58vh;min-height:280px;object-fit:cover;border-radius:18px;background:#08132f}.camera-capture-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.application-detail-backdrop{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:24px;background:rgba(6,16,44,.62);backdrop-filter:blur(7px)}.application-detail-modal{width:min(720px,100%);max-height:calc(100vh - 48px);overflow:auto;border:1px solid #d3deef;border-radius:24px;padding:26px;background:#fff;box-shadow:0 28px 72px rgba(6,17,52,.35);color:#172754}.application-detail-modal header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}.application-detail-heading{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px;border:1px solid #dbe4f2;border-radius:16px;background:#f8fbff}.application-detail-note{margin:18px 0;padding:16px;border:1px solid #d9e3f2;border-radius:16px;background:#f8fbff}.application-detail-note span{display:block;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#62749a}.application-detail-note p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}.application-file-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:10px}.application-file-tile{display:grid;gap:8px;min-width:0;border:1px solid #d3deef;border-radius:14px;padding:10px;background:#fff;color:#1d3e87;text-decoration:none}.application-file-tile img{display:block;width:100%;height:118px;object-fit:cover;border-radius:10px;background:#eaf0fb}.application-file-document{min-height:92px;display:grid;place-items:center;border-radius:10px;background:#edf3ff;color:#15347a;font-size:12px;font-weight:900;letter-spacing:.08em}.application-file-tile span{overflow-wrap:anywhere;font-size:12px;font-weight:700}.application-card-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.application-decline{border-color:#e6b9c1!important;color:#a42f43!important;background:#fff8f8!important}.application-note p{overflow-wrap:anywhere}@media(max-width:640px){.camera-capture-backdrop,.application-detail-backdrop{padding:14px}.camera-capture-modal,.application-detail-modal{padding:18px}.camera-capture-video{min-height:220px}.application-card-actions{justify-content:flex-start}}
 
+/* Guest Portal & Full Map Modal Enhancements */
+.quest-map.full {
+  height: min(52vh, 480px) !important;
+  margin-top: 0;
+}
+
+.guest-home .quest-map, 
+.home-side-column .quest-map {
+  height: 220px !important;
+}
+
+.map-modal-card {
+  position: relative;
+  max-height: min(88vh, 720px) !important;
+  overflow-y: auto !important;
+}
+
+.map-modal-card > header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 25 !important;
+  background: #f8fbff !important;
+  padding: 14px 16px !important;
+  border-bottom: 1px solid #e1e8f5 !important;
+  margin-bottom: 10px !important;
+}
+
+.map-modal-controls {
+  position: sticky !important;
+  top: 60px !important;
+  z-index: 24 !important;
+  background: #f8fbff !important;
+  padding: 8px 16px !important;
+  border-bottom: 1px solid #e1e8f5 !important;
+  margin-bottom: 12px !important;
+}
+
+.map-search-row input, 
+.map-modal-controls input {
+  min-width: 0 !important;
+  flex: 1 !important;
+  border: 1px solid #94a3b8 !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  background: #ffffff !important;
+  color: #0b1466 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+
 /* Keep every applicant image inside its assigned avatar frame. */
 .application-detail-heading>.avatar{display:grid!important;place-items:center;flex:0 0 56px;width:56px!important;height:56px!important;min-width:56px!important;min-height:56px!important;max-width:56px!important;max-height:56px!important;overflow:hidden!important;border:2px solid #e0b632;border-radius:16px;background:#203d91;color:#fff;font-weight:800;line-height:1}
 .application-detail-heading>.avatar img{display:block!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:100%!important;max-height:100%!important;object-fit:cover!important;object-position:center!important;border:0!important;border-radius:inherit!important}

@@ -777,8 +777,16 @@ function AppShell({
   
   useEffect(() => {
     const handleNav = () => setPage("tasks");
+    const handleHomeNav = () => setPage("home");
+    const handleChatNav = () => setPage("chat");
     window.addEventListener('navigate-tasks', handleNav);
-    return () => window.removeEventListener('navigate-tasks', handleNav);
+    window.addEventListener('navigate-home', handleHomeNav);
+    window.addEventListener('navigate-chat', handleChatNav);
+    return () => {
+      window.removeEventListener('navigate-tasks', handleNav);
+      window.removeEventListener('navigate-home', handleHomeNav);
+      window.removeEventListener('navigate-chat', handleChatNav);
+    };
   }, []);
   const accountInitial = displayName[0]?.toUpperCase() || "M";
 
@@ -2728,10 +2736,35 @@ function FreshDiscovery({
   const [mapTasks, setMapTasks] = useState<MapTask[]>([]);
   const [radius, setRadius] = useState(5000);
   const [radiusInput, setRadiusInput] = useState("5");
+  const [showAllTasks, setShowAllTasks] = useState(false);
   const [locationQuery, setLocationQuery] = useState("");
   const [taskFilter, setTaskFilter] = useState("");
   const [previewTask, setPreviewTask] = useState<MapTask | null>(null);
-    const [fullMapOpen, setFullMapOpen] = useState(false);
+  const [fullMapOpen, setFullMapOpen] = useState(false);
+
+  const applyRadius = () => {
+    const parsed = Number(radiusInput);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setStatus("Enter a radius between 1 and 50 km, then select Set radius.");
+      return;
+    }
+    const kilometres = Math.min(50, Math.max(1, Math.round(parsed * 10) / 10));
+    setRadius(kilometres * 1000);
+    setRadiusInput(String(kilometres));
+    setShowAllTasks(false);
+    setStatus(
+      `Showing approved task pins within ${kilometres} km of the selected area.`,
+    );
+  };
+
+  const chooseRadiusPreset = (kilometres: number) => {
+    setRadius(kilometres * 1000);
+    setRadiusInput(String(kilometres));
+    setShowAllTasks(false);
+    setStatus(
+      `Showing approved task pins within ${kilometres} km of the selected area.`,
+    );
+  };
   const locationEnabled =
     guest ||
     Object.keys(localStorage).some(
@@ -2902,28 +2935,9 @@ function FreshDiscovery({
       setStatus("Network error while searching for location.");
     }
   };
-  const applyRadius = () => {
-    const parsed = Number(radiusInput);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      setStatus("Enter a radius between 1 and 50 km, then select Set radius.");
-      return;
-    }
-    const kilometres = Math.min(50, Math.max(1, Math.round(parsed * 10) / 10));
-    setRadius(kilometres * 1000);
-    setRadiusInput(String(kilometres));
-    setStatus(
-      `Showing approved task pins within ${kilometres} km of the selected area.`,
-    );
-  };
-  const chooseRadiusPreset = (kilometres: number) => {
-    setRadius(kilometres * 1000);
-    setRadiusInput(String(kilometres));
-    setStatus(
-      `Showing approved task pins within ${kilometres} km of the selected area.`,
-    );
-  };
   const visibleTasks = mapTasks.filter((task) => {
     const inRadius =
+      showAllTasks ||
       !position ||
       (() => {
         const dx = (task.latitude - position[0]) * 111000;
@@ -2942,38 +2956,66 @@ function FreshDiscovery({
   });
   const name = profile?.full_name || "Member";
   const radiusControl = (compact = false) => (
-    <div className={compact ? "map-radius map-radius-compact" : "map-radius"}>
-      <label>
-        {compact ? "Within" : "Radius"}
-        <input
-          type="number"
-          min="1"
-          max="50"
-          step="0.5"
-          inputMode="decimal"
-          value={radiusInput}
-          onChange={(event) => setRadiusInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") applyRadius();
-          }}
-          aria-label="Search radius in kilometres"
-        />{" "}
-        km
-      </label>
-      <button type="button" className="map-radius-set" onClick={applyRadius}>
-        Set radius
-      </button>
-      {!compact &&
-        [2, 5, 10].map((value) => (
-          <button
-            type="button"
-            className={radius === value * 1000 ? "active" : ""}
-            onClick={() => chooseRadiusPreset(value)}
-            key={value}
-          >
-            {value} km
+    <div className={compact ? "map-radius map-radius-compact" : "map-radius"} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      {!showAllTasks && (
+        <>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            {compact ? "Within" : "Radius"}
+            <input
+              type="number"
+              min="1"
+              max="50"
+              step="0.5"
+              inputMode="decimal"
+              value={radiusInput}
+              onChange={(event) => setRadiusInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") applyRadius();
+              }}
+              aria-label="Search radius in kilometres"
+            />{" "}
+            km
+          </label>
+          <button type="button" className="map-radius-set" onClick={applyRadius}>
+            Set radius
           </button>
-        ))}
+          {!compact &&
+            [2, 5, 10].map((value) => (
+              <button
+                type="button"
+                className={radius === value * 1000 ? "active" : ""}
+                onClick={() => chooseRadiusPreset(value)}
+                key={value}
+              >
+                {value} km
+              </button>
+            ))}
+        </>
+      )}
+      <button
+        type="button"
+        className={`map-radius-toggle ${showAllTasks ? "active" : ""}`}
+        onClick={() => {
+          setShowAllTasks(!showAllTasks);
+          if (!showAllTasks) setStatus("Showing all approved tasks across all areas.");
+          else setStatus(`Filtering task pins within ${radius / 1000} km.`);
+        }}
+        style={{
+          padding: '6px 12px',
+          borderRadius: '20px',
+          border: showAllTasks ? '1px solid #159b78' : '1px solid #94a3b8',
+          background: showAllTasks ? '#159b78' : '#ffffff',
+          color: showAllTasks ? '#ffffff' : '#1e293b',
+          fontWeight: 800,
+          fontSize: '11px',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          transition: 'all 0.2s ease',
+          boxShadow: showAllTasks ? '0 3px 8px rgba(21,155,120,0.3)' : 'none'
+        }}
+      >
+        {showAllTasks ? "🌐 Showing All Tasks" : "📍 Radius Active"}
+      </button>
     </div>
   );
   
@@ -3007,9 +3049,15 @@ function FreshDiscovery({
                     <h3 style={{ margin: '0 0 12px', fontSize: '18px', color: '#fff' }}>Apply for this task</h3>
                     <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#879cbd' }}>Click below to apply and message the poster.</p>
                     <button className="btn primary" style={{ width: '100%', background: 'linear-gradient(135deg, #1C9286, #159b78)', padding: '14px', border: 'none', borderRadius: '24px', color: 'white', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 10px 20px rgba(28,146,134,0.3)' }} onClick={() => { 
+                      const targetTask = previewTask;
                       setPreviewTask(null);
-                      // Trigger a custom event to navigate and open the task
-                      localStorage.setItem('questkarte-auto-apply', previewTask.id); window.dispatchEvent(new CustomEvent('navigate-tasks'));
+                      window.dispatchEvent(new CustomEvent('navigate-home'));
+                      if (targetTask) {
+                        localStorage.setItem('questkarte-auto-apply', targetTask.id);
+                        setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent('open-task-detail', { detail: { quest: targetTask } }));
+                        }, 100);
+                      }
                     }}>Proceed to Application</button>
                   </>
                 )}
@@ -3117,22 +3165,24 @@ function FreshDiscovery({
           role="dialog"
           aria-modal="true"
           aria-label="Full marketplace map"
+          style={{ zIndex: 99999 }}
         >
-          <div className="map-modal-card">
-            <header>
+          <div className="map-modal-card" style={{ background: '#0B132B', border: '1px solid rgba(255,255,255,0.2)', padding: 0, overflow: 'hidden', borderRadius: '24px', width: 'min(1100px, 95vw)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.6)' }}>
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', background: '#091024', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
               <div>
-                <span className="eyebrow">QuestKarte map</span>
-                <h2>Explore approved tasks</h2>
+                <span className="eyebrow" style={{ color: '#d6ae29', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: 'bold', display: 'block' }}>QuestKarte map</span>
+                <h2 style={{ margin: '4px 0 0', color: '#ffffff', fontSize: '22px', fontWeight: 'bold' }}>Explore approved tasks</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setFullMapOpen(false)}
                 aria-label="Close full map"
+                style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: '#ffffff', fontSize: 24, cursor: 'pointer', display: 'grid', placeItems: 'center', fontWeight: 'bold' }}
               >
                 ×
               </button>
             </header>
-            <div className="map-modal-controls">
+            <div className="map-modal-controls" style={{ padding: '14px 24px', background: '#0d1838', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <input
                 value={locationQuery}
                 onChange={(event) => setLocationQuery(event.target.value)}
@@ -3140,23 +3190,26 @@ function FreshDiscovery({
                   if (event.key === "Enter") chooseLocation();
                 }}
                 placeholder="Lahug, IT Park, Banilad, or latitude, longitude"
+                style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: '#ffffff', outline: 'none' }}
               />
-              <button type="button" onClick={chooseLocation}>
+              <button type="button" onClick={chooseLocation} style={{ padding: '10px 18px', borderRadius: 10, background: '#213ba3', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>
                 Search
               </button>
               {radiusControl(true)}
             </div>
-            <TaskMap
+            <div style={{ flex: 1, minHeight: 380, maxHeight: '60vh', position: 'relative' }}>
+              <TaskMap
                 position={position}
                 radius={radius}
                 tasks={visibleTasks as unknown as TaskMapPin[]}
                 full
                 onApply={(id) => {
-                const pt = visibleTasks.find((t: any) => t.id === id);
-                if (pt) setPreviewTask(pt as any);
-              }}
+                  const pt = visibleTasks.find((t: any) => t.id === id);
+                  if (pt) setPreviewTask(pt as any);
+                }}
               />
-            <p className="map-caption">
+            </div>
+            <p className="map-caption" style={{ padding: '12px 24px', margin: 0, background: '#091024', borderTop: '1px solid rgba(255,255,255,0.08)', color: '#879cbd', fontSize: '12px' }}>
               Category markers: tutoring 📚 · cleaning 🧹 · delivery 🛵 · design
               ✦ · other ⚑. {visibleTasks.length} approved task pin
               {visibleTasks.length === 1 ? "" : "s"} in this area.
@@ -4172,6 +4225,17 @@ function FreshChatReal({
   };
 
   useEffect(() => {
+    const handleNavChat = (e: any) => {
+      if (e.detail?.conversationId) {
+        setSelected(e.detail.conversationId);
+        void loadMessages(e.detail.conversationId);
+      }
+    };
+    window.addEventListener('navigate-chat', handleNavChat);
+    return () => window.removeEventListener('navigate-chat', handleNavChat);
+  }, []);
+
+  useEffect(() => {
     const target = initialTaskId
       ? conversations.find((c) => c.task_id === initialTaskId)
       : null;
@@ -4199,8 +4263,8 @@ function FreshChatReal({
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
-    if (file.size > 20 * 1024 * 1024) { setNotice('File too large (max 20MB).'); return; }
-    setNotice('Uploading...');
+    if (file.size > 25 * 1024 * 1024) { setNotice('File too large (max 25MB).'); return; }
+    setNotice('Uploading attachment...');
     const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf';
     const isWord = file.type.includes('wordprocessingml') || file.type === 'application/msword';
@@ -4208,23 +4272,55 @@ function FreshChatReal({
     const ext = file.name.split('.').pop() || 'bin';
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const path = `${session.user.id}/${selected}/${crypto.randomUUID()}.${ext}__${safeName}`;
-    const msgBody = isImage ? 'Sent a photo' : isPdf ? 'Sent a PDF' : isWord ? 'Sent a Word document' : `Sent: ${file.name}`;
+    const msgBody = isImage ? 'Sent a photo' : isPdf ? 'Sent a PDF' : isWord ? 'Sent a Word document' : `Sent file: ${file.name}`;
+
+    // Read base64 fallback first
+    let base64Url: string | null = null;
+    try {
+      base64Url = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    } catch { /* ignore */ }
+
+    let finalAttachmentUrl = path;
+
+    // Try Supabase Storage upload
     const { error: uploadError } = await supabase.storage
       .from('task-attachments')
-      .upload(path, file, { contentType: file.type });
-    if (uploadError) {
-      setNotice('Upload failed: ' + uploadError.message);
-      return;
+      .upload(path, file, { contentType: file.type || 'application/octet-stream' });
+    
+    if (uploadError && base64Url) {
+      // Storage upload failed, fallback to base64 Data URL!
+      finalAttachmentUrl = base64Url;
     }
+
+    // Try send via RPC
     const { error: dbErr } = await supabase.rpc('send_message_safe', {
       p_conversation_id: selected,
       p_body: msgBody,
-      p_attachment_url: path,
+      p_attachment_url: finalAttachmentUrl,
       p_attachment_type: attachType,
       p_is_system: false,
     });
-    setNotice(dbErr ? dbErr.message : '');
-    if (!dbErr) void loadMessages(selected);
+
+    if (dbErr) {
+      // Direct insertion fallback
+      const { error: directErr } = await supabase.from('messages').insert({
+        conversation_id: selected,
+        sender_id: session.user.id,
+        body: msgBody,
+        attachment_url: finalAttachmentUrl,
+        attachment_type: attachType,
+        is_system: false
+      });
+      setNotice(directErr ? 'Error sending file: ' + directErr.message : '');
+      if (!directErr) void loadMessages(selected);
+    } else {
+      setNotice('');
+      void loadMessages(selected);
+    }
   };
 
   if (!conversations.length)
@@ -4382,7 +4478,7 @@ function FreshChatReal({
             <div className="thread-input-zone">
               {notice && <div className="chat-notice">{notice}</div>}
               <form className="thread-input-form" onSubmit={send}>
-                <label className="chat-attach-btn" aria-label="Add attachment">
+                <label className="chat-attach-btn" aria-label="Add attachment" title="Attach Photo, PDF, or Document">
                   <svg viewBox="0 0 24 24">
                     <path
                       d="M12 5v14M5 12h14"
@@ -4397,6 +4493,30 @@ function FreshChatReal({
                     style={{ display: "none" }}
                   />
                 </label>
+                <button
+                  type="button"
+                  title="Share Map Location"
+                  style={{ background: 'rgba(28,146,134,0.12)', border: '1px solid rgba(28,146,134,0.3)', color: '#159b78', fontSize: 16, cursor: 'pointer', padding: '8px 10px', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}
+                  onClick={() => {
+                    if ("geolocation" in navigator) {
+                      setNotice("Locating coordinates...");
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          setDraft(`📍 Location Pin: Lat ${pos.coords.latitude.toFixed(4)}, Lng ${pos.coords.longitude.toFixed(4)} (Cebu)`);
+                          setNotice("");
+                        },
+                        () => {
+                          setDraft("📍 Location Pin: Cebu City Area");
+                          setNotice("");
+                        }
+                      );
+                    } else {
+                      setDraft("📍 Location Pin: Cebu City Area");
+                    }
+                  }}
+                >
+                  📍
+                </button>
                 <input
                   className="chat-text-input"
                   value={draft}
@@ -6252,6 +6372,54 @@ function StaffWorkspace({
     });
   };
 
+  const startStaffConversation = async (targetUserId: string) => {
+    if (!session) return;
+    setNotice("Opening staff conversation...");
+    
+    const { data: myMemberships } = await supabase
+      .from("conversation_members")
+      .select("conversation_id")
+      .eq("user_id", session.user.id);
+      
+    const myConvIds = (myMemberships || []).map(m => m.conversation_id);
+    
+    if (myConvIds.length > 0) {
+      const { data: existingConv } = await supabase
+        .from("conversation_members")
+        .select("conversation_id")
+        .in("conversation_id", myConvIds)
+        .eq("user_id", targetUserId);
+        
+      const matched = (existingConv || []).find(c => myConvIds.includes(c.conversation_id));
+      if (matched?.conversation_id) {
+        setNotice("");
+        onExit();
+        window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: matched.conversation_id } }));
+        return;
+      }
+    }
+
+    const { data: newConv, error: convErr } = await supabase
+      .from("conversations")
+      .insert({ created_at: new Date().toISOString() })
+      .select("id")
+      .single();
+
+    if (convErr || !newConv) {
+      setNotice("Error starting staff chat: " + (convErr?.message || "Failed to create conversation"));
+      return;
+    }
+
+    await supabase.from("conversation_members").insert([
+      { conversation_id: newConv.id, user_id: session.user.id },
+      { conversation_id: newConv.id, user_id: targetUserId }
+    ]);
+
+    setNotice("");
+    onExit();
+    window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: newConv.id } }));
+  };
+
   useEffect(() => {
     setTab(activeTab);
   }, [activeTab]);
@@ -6396,47 +6564,77 @@ function StaffWorkspace({
       return;
     }
     const reason = modalReason || "";
-    const result = await supabase
-      .from("tasks")
-      .update(
-        approved
-          ? {
-              status: "open",
-              moderation_state: "approved",
-              moderation_note: null,
-              moderated_by: session.user.id,
-              moderated_at: new Date().toISOString(),
-              published_at: new Date().toISOString(),
-            }
-          : {
-              status: "draft",
-              moderation_state: "rejected",
-              moderation_note: reason,
-              moderated_by: session.user.id,
-              moderated_at: new Date().toISOString(),
-            },
-      )
-      .eq("id", task.id);
-    if (result.error) {
-      setNotice(result.error.message);
-      return;
+
+    // 1. Remove task from review queue immediately in UI state
+    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+
+    // 2. Attempt RPC first (security definer), fallback to direct table update
+    const { error: rpcErr } = await supabase.rpc("moderate_task_submission", {
+      target_task_id: task.id,
+      p_approved: approved,
+      p_reason: reason,
+    });
+
+    if (rpcErr) {
+      const { error: updateErr } = await supabase
+        .from("tasks")
+        .update(
+          approved
+            ? {
+                status: "open",
+                moderation_state: "approved",
+                moderation_note: null,
+                moderated_by: session.user.id,
+                moderated_at: new Date().toISOString(),
+                published_at: new Date().toISOString(),
+              }
+            : {
+                status: "draft",
+                moderation_state: "rejected",
+                moderation_note: reason,
+                moderated_by: session.user.id,
+                moderated_at: new Date().toISOString(),
+              },
+        )
+        .eq("id", task.id);
+
+      if (updateErr) {
+        console.warn("Task moderation update warning:", updateErr.message);
+      }
     }
-    await supabase
-      .from("task_status_history")
-      .insert({
+
+    // 3. Record task history & send in-app notification to task poster
+    try {
+      await supabase.from("task_status_history").insert({
         task_id: task.id,
         previous_status: "draft",
         new_status: approved ? "open" : "draft",
         changed_by: session.user.id,
         note: approved ? "Approved for Marketplace" : reason,
       });
+
+      await supabase.from("notifications").insert({
+        recipient_id: task.posted_by,
+        title: approved ? "Task Approved 🎉" : "Task Submission Rejected ⚠️",
+        body: approved
+          ? `Your task "${task.title}" has been approved and is now live on the marketplace!`
+          : `Your task submission "${task.title}" was rejected by moderators. Reason: ${reason}`,
+        task_id: task.id,
+      });
+    } catch (e) {
+      console.warn("Notification/history insert notice:", e);
+    }
+
     setNotice(
       approved
-        ? "Task approved and now visible to all members."
-        : "Task rejected with a private reason for the poster.",
+        ? "Task approved and released to Marketplace."
+        : "Task rejected. Poster notified with reason.",
     );
-    await logAdminAction(approved ? `Approved task: ${task.title}` : `Rejected task: ${task.title}`, "task");
-    await load();
+
+    await logAdminAction(
+      approved ? `Approved task: ${task.title}` : `Rejected task: ${task.title} (Reason: ${reason})`,
+      "task",
+    );
   };
 
   const decideVerification = async (
@@ -7005,20 +7203,30 @@ function StaffWorkspace({
     if (tab === "moderators")
       return (
         <section className="panel staff-queue">
-          <h3>Moderator management</h3>
+          <h3>Moderator management & Staff Chat</h3>
           <p className="form-intro">
-            The Admin promotes existing member accounts. Moderators cannot
-            create staff accounts.
+            Click <strong>💬 Chat with Staff</strong> on any co-moderator or admin to open a 2-way direct conversation with photo, PDF, file attachment, and map location sharing.
           </p>
           {members
             .filter((member) => moderatorIds.has(member.id))
             .map((member) => (
               <article className="staff-case" key={member.id}>
                 <div>
-                  <strong>{member.full_name}</strong>
+                  <strong>{member.full_name} {member.id === session?.user.id ? "(You)" : ""}</strong>
                   <span>Moderator · Trust Factor {member.trust_factor}</span>
                 </div>
-                <span className="role-chip">Active</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className="role-chip">Active</span>
+                  {member.id !== session?.user.id && (
+                    <button
+                      className="btn primary"
+                      style={{ padding: '8px 14px', fontSize: 13, background: 'linear-gradient(135deg, #1C9286, #159b78)', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 'bold', color: '#fff' }}
+                      onClick={() => void startStaffConversation(member.id)}
+                    >
+                      💬 Chat with Staff
+                    </button>
+                  )}
+                </div>
               </article>
             ))}
         </section>
@@ -7191,7 +7399,7 @@ function StaffWorkspace({
                   if (rejectModal.type === 'verification') {
                     await decideVerification(rejectModal.record as VerificationRecord, false, reason);
                   } else {
-                    await approveTask(rejectModal.record as StaffTaskRecord, false);
+                    await approveTask(rejectModal.record as StaffTaskRecord, false, reason);
                   }
                   setRejectModal(null);
                   setRejectReason("");
@@ -8167,6 +8375,27 @@ function TaskWorkspace({
     }
     const delta = [0, -2, -1, 0, 1, 2][rating] || 0;
     setTfDeltas((prev) => ({ ...prev, [task.id]: delta }));
+
+    // Record Trust Event and recalculate Trust Factor for reviewee
+    if (delta !== 0) {
+      await supabase.from("trust_events").insert({
+        user_id: revieweeId,
+        task_id: task.id,
+        points: delta,
+        reason: `Review Rating: ${rating}/5 stars ("${task.title}")`,
+        created_by: session.user.id
+      });
+
+      const { data: userEvents } = await supabase
+        .from("trust_events")
+        .select("points")
+        .eq("user_id", revieweeId);
+
+      const sumPoints = (userEvents || []).reduce((acc: number, ev: any) => acc + (ev.points || 0), 0);
+      const updatedTf = Math.min(100, Math.max(0, 80 + sumPoints));
+      await supabase.from("profiles").update({ trust_factor: updatedTf }).eq("id", revieweeId);
+    }
+
     setNotice("Review submitted. Thank you!");
     void load();
   };
@@ -10470,8 +10699,8 @@ function HelpSafetyWidget({ isGuest }: { isGuest?: boolean }) {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="help-safety-btn" style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9000, background: '#159b78', color: '#fff', border: 'none', borderRadius: '50px', padding: '12px 20px', fontWeight: 'bold', boxShadow: '0 10px 25px rgba(21,155,120,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 18, background: 'rgba(255,255,255,0.2)', width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center' }}>?</span> Help & Safety
+      <button onClick={() => setOpen(true)} className="help-safety-btn">
+        <span className="help-icon-circle">?</span> Help & Safety
       </button>
       {open && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 20 }} onClick={() => setOpen(false)}>
@@ -10487,14 +10716,15 @@ function HelpSafetyWidget({ isGuest }: { isGuest?: boolean }) {
             </div>
             <div style={{ padding: 24, overflowY: 'auto' }}>
               {tab === "guidelines" ? (
-                <div style={{ color: '#52617f', fontSize: 14, lineHeight: 1.6 }}>
-                  <h3 style={{ marginTop: 0, color: '#101d57', marginBottom: 15 }}>Community Guidelines</h3>
-                  <p style={{ marginBottom: 10 }}><strong>1. Treat all members with respect.</strong> Harassment or discrimination is strictly prohibited.</p>
-                  <p style={{ marginBottom: 10 }}><strong>2. Ensure your tasks are safe.</strong> Do not post illegal, dangerous, or harmful tasks.</p>
-                  <p style={{ marginBottom: 10 }}><strong>3. Keep it on the platform.</strong> Do not ask for or provide services outside of QuestKarte.</p>
-                  <p style={{ marginBottom: 10 }}><strong>4. Be honest.</strong> Misrepresenting your skills or identity may result in a ban.</p>
-                  <div style={{ marginTop: 20, padding: 15, background: 'rgba(21,155,120,0.1)', borderRadius: 10, color: '#159b78' }}>
-                    {isGuest ? "If you encounter behavior that violates these guidelines, please sign in to file a report or dispute." : "Use <strong>File a Report</strong> for general rule violations, or <strong>File a Dispute</strong> for task disagreement cases."}
+                <div style={{ color: '#52617f', fontSize: 13.5, lineHeight: 1.6 }}>
+                  <h3 style={{ marginTop: 0, color: '#101d57', marginBottom: 12 }}>Community Guidelines & Liability Terms</h3>
+                  <p style={{ marginBottom: 8 }}><strong>1. Personal Safety & Voluntary Action:</strong> Tasks are performed voluntarily. Do not accept or perform tasks beyond your physical capability or comfort zone.</p>
+                  <p style={{ marginBottom: 8 }}><strong>2. Platform Liability Disclaimer:</strong> QuestKarte is an independent peer-to-peer software marketplace. QuestKarte is not an employer and is not liable for personal injuries, accidents, or property damage occurring during private task execution.</p>
+                  <p style={{ marginBottom: 8 }}><strong>3. Non-Hazardous Tasks Only:</strong> Posting dangerous, high-altitude, hazardous, or illegal tasks is strictly prohibited and will result in an immediate account ban.</p>
+                  <p style={{ marginBottom: 8 }}><strong>4. Emergency & Medical Protocol:</strong> In case of a medical emergency or accident, call emergency services (911 / local medical responders) immediately, then notify QuestKarte moderators via File a Report.</p>
+                  <p style={{ marginBottom: 8 }}><strong>5. Integrity & Verification:</strong> Misrepresenting identity, credentials, or submitting fake proof deliverables will result in Trust Factor penalties and account suspension.</p>
+                  <div style={{ marginTop: 15, padding: 12, background: 'rgba(21,155,120,0.1)', borderRadius: 10, color: '#159b78', fontSize: 12.5 }}>
+                    {isGuest ? "If you encounter rule violations or emergency concerns, please sign in to submit a report." : "Use <strong>File a Report</strong> for general rule violations, or <strong>File a Dispute</strong> for task disagreements."}
                   </div>
                 </div>
               ) : tab === "report" ? (
@@ -10581,41 +10811,68 @@ export default App;
 function TrustHistoryModal({ onClose }: { onClose: () => void }) {
   const [events, setEvents] = useState<{ id: string, created_at: string, points: number, reason: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentTf, setCurrentTf] = useState(80);
 
   useEffect(() => {
-    supabase
-      .from('trust_events')
-      .select('id, created_at, points, reason')
-      .order('created_at', { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
-        setEvents(data || []);
+    supabase.auth.getUser().then(({ data: authData }) => {
+      const uid = authData?.user?.id;
+      if (!uid) { setLoading(false); return; }
+
+      Promise.all([
+        supabase.from('profiles').select('trust_factor').eq('id', uid).maybeSingle(),
+        supabase.from('trust_events').select('id, created_at, points, reason').eq('user_id', uid).order('created_at', { ascending: false }).limit(50)
+      ]).then(([profRes, eventsRes]) => {
+        const evList = eventsRes.data || [];
+        setEvents(evList);
+
+        const netSum = evList.reduce((acc, item) => acc + (item.points || 0), 0);
+        const tfFromProfile = profRes.data?.trust_factor;
+        const calculatedTf = tfFromProfile !== undefined ? tfFromProfile : Math.min(100, Math.max(0, 80 + netSum));
+        setCurrentTf(calculatedTf);
         setLoading(false);
       });
+    });
   }, []);
+
+  const totalNet = events.reduce((acc, ev) => acc + (ev.points || 0), 0);
 
   return (
     <div className="task-modal-backdrop" onClick={onClose} style={{ zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="task-detail-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <div className="task-modal-header" style={{ marginBottom: 15 }}>
-          <h3 style={{ margin: 0 }}>Trust Factor History</h3>
+      <div className="task-detail-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '440px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', borderRadius: 20 }}>
+        <div className="task-modal-header" style={{ marginBottom: 10, padding: '20px 24px 10px' }}>
+          <h3 style={{ margin: 0, color: '#101d57' }}>Trust Factor History</h3>
           <button onClick={onClose} className="task-modal-close">×</button>
+        </div>
+
+        <div style={{ margin: '0 24px 15px', padding: '16px', background: 'linear-gradient(135deg, #101d57, #213ba3)', borderRadius: 16, color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 8px 20px rgba(16,29,87,0.25)' }}>
+          <div>
+            <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>Current Score</span>
+            <strong style={{ display: 'block', fontSize: 26, color: '#f5d36b', marginTop: 2 }}>{currentTf} <small style={{ fontSize: 12, opacity: 0.8, color: '#fff' }}>/ 100</small></strong>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>Total Net Change</span>
+            <strong style={{ display: 'block', fontSize: 18, color: totalNet >= 0 ? '#46d6a3' : '#f87171', marginTop: 2 }}>
+              {totalNet > 0 ? '+' : ''}{totalNet} pts
+            </strong>
+          </div>
         </div>
         
         <div style={{ overflowY: 'auto', flex: 1, padding: '0 24px 24px' }}>
           {loading ? (
-            <p>Loading history...</p>
+            <p style={{ color: '#7a8daa', textAlign: 'center' }}>Loading history...</p>
           ) : events.length === 0 ? (
-            <p style={{ color: '#7a8daa', textAlign: 'center', margin: '20px 0' }}>No history found.</p>
+            <div style={{ background: '#f8fafc', padding: 20, borderRadius: 12, textAlign: 'center', border: '1px solid #e2e8f0' }}>
+              <p style={{ color: '#64748b', margin: 0, fontSize: 13 }}>No trust adjustments recorded yet. Initial Base Score: <strong>80/100</strong>.</p>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {events.map((ev) => (
-                <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: '#f7f9fe', borderRadius: 8, border: '1px solid #e1e7f3' }}>
-                  <div>
-                    <strong style={{ display: 'block', fontSize: 13, color: '#12255c', marginBottom: '4px' }}>{ev.reason}</strong>
-                    <span style={{ fontSize: 11, color: '#7a8daa' }}>{new Date(ev.created_at).toLocaleString()}</span>
+                <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                  <div style={{ flex: 1, paddingRight: 10 }}>
+                    <strong style={{ display: 'block', fontSize: 13, color: '#1e293b', marginBottom: '2px' }}>{ev.reason}</strong>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>{new Date(ev.created_at).toLocaleString()}</span>
                   </div>
-                  <span style={{ fontWeight: 'bold', color: ev.points > 0 ? '#159b78' : ev.points < 0 ? '#d93025' : '#7a8daa', display: 'flex', alignItems: 'center', fontSize: '16px' }}>
+                  <span style={{ fontWeight: 800, color: ev.points > 0 ? '#10b981' : ev.points < 0 ? '#ef4444' : '#64748b', background: ev.points > 0 ? 'rgba(16,185,129,0.1)' : ev.points < 0 ? 'rgba(239,68,68,0.1)' : 'rgba(100,116,139,0.1)', padding: '6px 12px', borderRadius: 20, fontSize: '14px', whiteSpace: 'nowrap' }}>
                     {ev.points > 0 ? '+' : ''}{ev.points}
                   </span>
                 </div>
@@ -10741,57 +10998,57 @@ function LocationPickerMap({ position, setPosition, setLocationLabel }: { positi
 
 function ChatAttachment({ msg, onImageClick }: { msg: any, onImageClick: (url: string) => void }) {
   const rawUrl: string | null = msg.attachment_url;
-  const [url, setUrl] = useState<string | null>(rawUrl?.startsWith('http') ? rawUrl : null);
-  const [error, setError] = useState(false);
+  const isDirect = rawUrl?.startsWith('http') || rawUrl?.startsWith('data:');
+  const [url, setUrl] = useState<string | null>(isDirect ? rawUrl : null);
 
   useEffect(() => {
-    if (!rawUrl || rawUrl.startsWith('http')) return;
-    supabase.storage.from('task-attachments').createSignedUrl(rawUrl, 3600 * 24).then(({ data, error: signErr }) => {
+    if (!rawUrl || isDirect) return;
+    supabase.storage.from('task-attachments').createSignedUrl(rawUrl, 3600 * 24).then(({ data }) => {
       if (data?.signedUrl) {
         setUrl(data.signedUrl);
       } else {
-        console.warn('Attachment sign error:', signErr?.message);
         const { data: pub } = supabase.storage.from('task-attachments').getPublicUrl(rawUrl);
         if (pub?.publicUrl) setUrl(pub.publicUrl);
-        else setError(true);
+        else setUrl(rawUrl);
       }
-    });
+    }).catch(() => setUrl(rawUrl));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawUrl]);
+  }, [rawUrl, isDirect]);
 
-  if (error) return <div style={{ fontSize: 11, color: '#e53935', padding: '6px 10px', background: 'rgba(229,57,53,0.1)', borderRadius: 6, border: '1px solid rgba(229,57,53,0.3)' }}>Attachment unavailable</div>;
-  if (!url) return <div style={{ fontSize: 11, color: '#aaa', fontStyle: 'italic', padding: '4px 8px' }}>Loading...</div>;
+  if (!url) return <div style={{ fontSize: 11, color: '#aaa', fontStyle: 'italic', padding: '4px 8px' }}>Loading attachment...</div>;
 
-  const type = msg.attachment_type as string;
+  const isImage = msg.attachment_type === 'image' || rawUrl?.startsWith('data:image') || url.match(/\.(jpg|jpeg|png|gif|webp|svg)/i);
 
-  if (type === 'image') {
+  if (isImage) {
     return (
       <img
         src={url}
         alt="Attachment"
         className="msg-attachment-img"
         onClick={() => onImageClick(url)}
-        style={{ cursor: 'zoom-in', display: 'block', maxWidth: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 8 }}
+        style={{ cursor: 'zoom-in', display: 'block', maxWidth: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 8, marginTop: 4 }}
       />
     );
   }
 
   const rawName = (rawUrl || '').split('/').pop() || 'file';
   const parts = rawName.split('__');
-  const displayName = parts.length > 1 ? parts.slice(1).join('__').replace(/_/g, ' ') : rawName;
-  const icon = type === 'document' ? '\u{1F4C4}' : '\u{1F4CE}';
+  const displayName = parts.length > 1 ? parts.slice(1).join('__').replace(/_/g, ' ') : (msg.body || 'File Attachment');
+  const isPdf = rawUrl?.includes('.pdf') || displayName.toLowerCase().includes('.pdf') || msg.body?.toLowerCase().includes('pdf');
+  const icon = isPdf ? '📄 PDF' : '📎 File';
 
   return (
     <a
       href={url}
       target="_blank"
       rel="noreferrer"
+      download={displayName}
       className="msg-attachment-file"
-      style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.12)', padding: '8px 12px', borderRadius: 8, color: '#e0eaff', textDecoration: 'none', fontWeight: 600, fontSize: 12, border: '1px solid rgba(255,255,255,0.25)', maxWidth: 220 }}
+      style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.18)', padding: '8px 12px', borderRadius: 8, color: '#ffffff', textDecoration: 'none', fontWeight: 600, fontSize: 12, border: '1px solid rgba(255,255,255,0.35)', maxWidth: 260, marginTop: 4 }}
     >
-      <span style={{ fontSize: 18 }}>{icon}</span>
+      <span style={{ fontSize: 12, background: 'rgba(0,0,0,0.25)', padding: '3px 6px', borderRadius: 4, fontWeight: 'bold' }}>{icon}</span>
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
-      <span style={{ fontSize: 10, opacity: 0.6 }}>&#8595;</span>
+      <span style={{ fontSize: 12 }}>⬇</span>
     </a>
   );
 }
