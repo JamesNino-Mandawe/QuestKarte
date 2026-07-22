@@ -347,33 +347,66 @@ function LegacyAppShell({
       <main className="shell-main">
         <header className="topbar">
           <Brand />
-          <label className="search-wrap">
-            <span className="search-icon">⌕</span>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search tasks or skills..."
-              aria-label="Search tasks"
-            />
-          </label>
-          {session && <NotificationBell userId={session.user.id} />}
-          <button
-            className="account-btn lvl-ring"
-            onClick={() => setPage("account")}
-            aria-label="Open account"
-          >
-            <span className="avatar">
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" />
-              ) : (
-                accountInitial
-              )}
-            </span>
-            <span className="lvl-badge-tag">
-              <span className="in">{session ? "1" : "12"}</span>
-            </span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label className="search-wrap desktop-only-search">
+              <span className="search-icon">⌕</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search tasks or skills..."
+                aria-label="Search tasks"
+              />
+            </label>
+            <button
+              type="button"
+              className="mobile-search-toggle-btn"
+              onClick={() => {
+                const el = document.getElementById('mobile-search-drawer');
+                if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+              }}
+              title="Search"
+              style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(16,29,87,0.08)', border: '1px solid rgba(16,29,87,0.15)', cursor: 'pointer', fontSize: 15, display: 'grid', placeItems: 'center' }}
+            >
+              🔍
+            </button>
+            <button
+              type="button"
+              className="topbar-help-btn"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-help-safety-modal'))}
+              title="Help & Safety"
+              style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(21,155,120,0.12)', border: '1px solid rgba(21,155,120,0.3)', color: '#159b78', fontWeight: 'bold', fontSize: 16, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+            >
+              ?
+            </button>
+            {session && <NotificationBell userId={session.user.id} />}
+            <button
+              className="account-btn lvl-ring"
+              onClick={() => setPage("account")}
+              aria-label="Open account"
+            >
+              <span className="avatar">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" />
+                ) : (
+                  accountInitial
+                )}
+              </span>
+              <span className="lvl-badge-tag">
+                <span className="in">{session ? "1" : "12"}</span>
+              </span>
+            </button>
+          </div>
         </header>
+        <div id="mobile-search-drawer" style={{ display: 'none', padding: '10px 16px', background: '#101d57', borderBottom: '1px solid rgba(255,255,255,0.1)', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: '#fff', fontSize: 16 }}>🔍</span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search tasks, skills, or members..."
+            style={{ flex: 1, padding: '10px 14px', borderRadius: 10, background: '#1c2a6b', border: '1px solid #32479e', color: '#fff', fontSize: 14, outline: 'none' }}
+          />
+          <button onClick={() => { const el = document.getElementById('mobile-search-drawer'); if(el) el.style.display = 'none'; }} style={{ background: 'none', border: 'none', color: '#f5d36b', fontWeight: 'bold', cursor: 'pointer', fontSize: 13 }}>Done</button>
+        </div>
         <section className="page-title-row">
           <div className="eyebrow">QuestKarte marketplace</div>
           <h1>{titleFor(page)}</h1>
