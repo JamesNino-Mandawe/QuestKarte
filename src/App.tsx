@@ -6615,11 +6615,11 @@ function StaffWorkspace({
 
       await supabase.from("notifications").insert({
         recipient_id: task.posted_by,
+        type: "task",
         title: approved ? "Task Approved 🎉" : "Task Submission Rejected ⚠️",
         body: approved
           ? `Your task "${task.title}" has been approved and is now live on the marketplace!`
           : `Your task submission "${task.title}" was rejected by moderators. Reason: ${reason}`,
-        task_id: task.id,
       });
     } catch (e) {
       console.warn("Notification/history insert notice:", e);
@@ -6668,6 +6668,16 @@ function StaffWorkspace({
         })
         .eq("id", record.user_id);
         
+      // Insert in-app notification for the user's Notification Bell
+      await supabase.from("notifications").insert({
+        recipient_id: record.user_id,
+        type: "verification",
+        title: approved ? "Account Verification Approved 🎉" : "Verification Update Required ⚠️",
+        body: approved
+          ? "Your identity verification has been approved by moderators! You now have full access to QuestKarte."
+          : `Your verification request was not approved. Reason: ${reason || "Please submit clearer documents."}`,
+      });
+
       // Fetch user email via RPC to send email
       try {
         const { data: contact } = await supabase.rpc('get_user_contact_info', { uid: record.user_id });
@@ -9011,7 +9021,12 @@ function TaskWorkspace({
   ) : null;
 
   // ── Main render ────────────────────────────────────────────────────
-  const visiblePosted = posted.filter((task) => localStorage.getItem('dismissed-task-' + task.id) !== 'true');
+  const visiblePosted = posted.filter(
+    (task) =>
+      task.moderation_state !== 'rejected' &&
+      (task.status as string) !== 'rejected' &&
+      localStorage.getItem('dismissed-task-' + task.id) !== 'true'
+  );
   const visibleApplied = applied.filter((app) => app.task && localStorage.getItem('dismissed-task-' + app.task.id) !== 'true');
 
   return (
