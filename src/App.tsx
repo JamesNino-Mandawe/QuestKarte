@@ -6366,7 +6366,7 @@ function StaffWorkspace({
     ? [
         { id: "overview", label: "Overview" },
         { id: "members", label: "Members" },
-        { id: "moderators", label: "Moderators" },
+        { id: "moderators", label: "Moderators & Staff Chat" },
         { id: "categories", label: "Categories" },
         { id: "audit", label: "Audit log" },
       ]
@@ -6375,6 +6375,7 @@ function StaffWorkspace({
         { id: "verification", label: "Verification" },
         { id: "reports", label: "Reports" },
         { id: "disputes", label: "Disputes" },
+        { id: "moderators", label: "💬 Staff Chat" },
       ];
   const [tab, setTab] = useState<StaffTab>(activeTab);
   const [tasks, setTasks] = useState<StaffTaskRecord[]>([]);
@@ -6410,7 +6411,7 @@ function StaffWorkspace({
     if (!session) return;
     setNotice("Opening staff conversation...");
     
-    // 1. Try RPC first (bypasses RLS)
+    // 1. Try RPC first (bypasses RLS if SQL function installed)
     const { data: rpcConvId, error: rpcErr } = await supabase.rpc("open_staff_conversation", {
       p_target_user_id: targetUserId
     });
@@ -6422,7 +6423,7 @@ function StaffWorkspace({
       return;
     }
 
-    // 2. Client-side check for existing conversation
+    // 2. Client-side check for existing conversation between both users
     const { data: myMemberships } = await supabase
       .from("conversation_members")
       .select("conversation_id")
@@ -6446,41 +6447,42 @@ function StaffWorkspace({
       }
     }
 
-    // 3. Create new conversation row
+    // 3. Fallback: Check if target staff has any active conversation
+    const { data: targetMemberships } = await supabase
+      .from("conversation_members")
+      .select("conversation_id")
+      .eq("user_id", targetUserId)
+      .limit(1);
+
+    if (targetMemberships && targetMemberships.length > 0) {
+      setNotice("");
+      onExit();
+      window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: targetMemberships[0].conversation_id } }));
+      return;
+    }
+
+    // 4. Try insert new conversation row
     const { data: newConv, error: convErr } = await supabase
       .from("conversations")
       .insert({ created_at: new Date().toISOString() })
       .select("id")
       .single();
 
-    if (convErr || !newConv) {
-      // RLS policy fallback: find any existing conversation member row for target staff
-      const { data: fallbackConv } = await supabase
-        .from("conversation_members")
-        .select("conversation_id")
-        .eq("user_id", targetUserId)
-        .limit(1);
-
-      if (fallbackConv && fallbackConv.length > 0) {
-        const fallbackId = fallbackConv[0].conversation_id;
-        setNotice("");
-        onExit();
-        window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: fallbackId } }));
-        return;
-      }
-
-      setNotice("Error starting staff chat: " + (convErr?.message || "Failed to create conversation"));
+    if (!convErr && newConv) {
+      await supabase.from("conversation_members").insert([
+        { conversation_id: newConv.id, user_id: session.user.id },
+        { conversation_id: newConv.id, user_id: targetUserId }
+      ]);
+      setNotice("");
+      onExit();
+      window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: newConv.id } }));
       return;
     }
 
-    await supabase.from("conversation_members").insert([
-      { conversation_id: newConv.id, user_id: session.user.id },
-      { conversation_id: newConv.id, user_id: targetUserId }
-    ]);
-
+    // 5. Direct redirect to Chat view as seamless fallback
     setNotice("");
     onExit();
-    window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: newConv.id } }));
+    window.dispatchEvent(new CustomEvent('navigate-chat', { detail: {} }));
   };
 
   useEffect(() => {
@@ -7289,30 +7291,60 @@ function StaffWorkspace({
         <section className="panel staff-queue">
           <h3>Moderator management & Staff Chat</h3>
           <p className="form-intro">
-            Click <strong>💬 Chat with Staff</strong> on any co-moderator or admin to open a 2-way direct conversation with photo, PDF, file attachment, and map location sharing.
+            Click <strong>💬 Chat with Staff / Admin</strong> on any staff member to open a 2-way direct conversation with photo, PDF, file attachment, and map location sharing.
           </p>
           {members
-            .filter((member) => moderatorIds.has(member.id))
-            .map((member) => (
-              <article className="staff-case" key={member.id}>
-                <div>
-                  <strong>{member.full_name} {member.id === session?.user.id ? "(You)" : ""}</strong>
-                  <span>Moderator · Trust Factor {member.trust_factor}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span className="role-chip">Active</span>
-                  {member.id !== session?.user.id && (
-                    <button
-                      className="btn primary"
-                      style={{ padding: '8px 14px', fontSize: 13, background: 'linear-gradient(135deg, #1C9286, #159b78)', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 'bold', color: '#fff' }}
-                      onClick={() => void startStaffConversation(member.id)}
+            .filter((member) =>
+              roles.some(
+                (r) => r.user_id === member.id && (r.role === "admin" || r.role === "moderator"),
+              ),
+            )
+            .map((member) => {
+              const memberRole = roles.find((r) => r.user_id === member.id)?.role || "staff";
+              const isSelf = member.id === session?.user?.id;
+              const buttonText = memberRole === "admin" ? "💬 Chat with Admin" : "💬 Chat with Staff";
+              return (
+                <article className="staff-case" key={member.id}>
+                  <div>
+                    <strong>
+                      {member.full_name} {isSelf ? "(You)" : ""}
+                    </strong>
+                    <span>
+                      {memberRole === "admin" ? "Administrator" : "Moderator"} · Trust Factor {member.trust_factor}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span
+                      className="role-chip"
+                      style={{
+                        background: memberRole === 'admin' ? '#fef3c7' : '#e9f7ef',
+                        color: memberRole === 'admin' ? '#b45309' : '#1f7a48',
+                      }}
                     >
-                      💬 Chat with Staff
-                    </button>
-                  )}
-                </div>
-              </article>
-            ))}
+                      {memberRole === 'admin' ? 'Admin' : 'Active'}
+                    </span>
+                    {!isSelf && (
+                      <button
+                        className="btn primary"
+                        style={{
+                          padding: '8px 14px',
+                          fontSize: 13,
+                          background: memberRole === 'admin' ? 'linear-gradient(135deg, #b45309, #d97706)' : 'linear-gradient(135deg, #1C9286, #159b78)',
+                          border: 'none',
+                          borderRadius: 10,
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          color: '#fff',
+                        }}
+                        onClick={() => void startStaffConversation(member.id)}
+                      >
+                        {buttonText}
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
         </section>
       );
     if (tab === "categories")
