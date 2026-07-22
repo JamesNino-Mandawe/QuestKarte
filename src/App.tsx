@@ -3801,7 +3801,7 @@ function FreshTasks({
     const [own, mine] = await Promise.all([
       supabase
         .from("tasks")
-        .select("id,title,status,moderation_state,assigned_to,created_at,commission_amount,is_service_swap,deadline_at,location_label,payment_type,payment_status,category:categories(name),hidden_by_poster,hidden_by_assignee,payment_receipt_url")
+        .select("id,title,status,moderation_state,assigned_to,created_at,commission_amount,is_service_swap,deadline_at,location_label,payment_type,payment_status,category:categories(name),hidden_by_poster,hidden_by_assignee")
         .eq("posted_by", session.user.id)
         .order("created_at", { ascending: false }),
       supabase
@@ -7567,7 +7567,7 @@ function TaskWorkspace({
       supabase
         .from("tasks")
         .select(
-          "id,title,status,moderation_state,assigned_to,posted_by,created_at,deadline_at,completed_at,commission_amount,currency,payment_type,payment_status,category_id,is_service_swap,payment_receipt_url,swap_details",
+          "id,title,status,moderation_state,assigned_to,posted_by,created_at,deadline_at,completed_at,commission_amount,currency,payment_type,payment_status,category_id,is_service_swap,swap_details",
         )
         .eq("posted_by", session.user.id)
         .order("created_at", { ascending: false }),
