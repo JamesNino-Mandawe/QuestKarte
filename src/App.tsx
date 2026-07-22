@@ -6397,6 +6397,7 @@ function StaffWorkspace({
   const [rejectModal, setRejectModal] = useState<{ type: 'verification' | 'task'; record: VerificationRecord | StaffTaskRecord } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [taskPreview, setTaskPreview] = useState<Quest | null>(null);
+  const [activeStaffChatConvId, setActiveStaffChatConvId] = useState<string | null>(null);
   
   const logAdminAction = async (action: string, entity_type: string) => {
     if (!session) return;
@@ -6418,8 +6419,7 @@ function StaffWorkspace({
 
     if (!rpcErr && rpcConvId) {
       setNotice("");
-      onExit();
-      window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: rpcConvId } }));
+      setActiveStaffChatConvId(rpcConvId);
       return;
     }
 
@@ -6441,8 +6441,7 @@ function StaffWorkspace({
       const matched = (existingConv || []).find(c => myConvIds.includes(c.conversation_id));
       if (matched?.conversation_id) {
         setNotice("");
-        onExit();
-        window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: matched.conversation_id } }));
+        setActiveStaffChatConvId(matched.conversation_id);
         return;
       }
     }
@@ -6456,8 +6455,7 @@ function StaffWorkspace({
 
     if (targetMemberships && targetMemberships.length > 0) {
       setNotice("");
-      onExit();
-      window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: targetMemberships[0].conversation_id } }));
+      setActiveStaffChatConvId(targetMemberships[0].conversation_id);
       return;
     }
 
@@ -6474,15 +6472,13 @@ function StaffWorkspace({
         { conversation_id: newConv.id, user_id: targetUserId }
       ]);
       setNotice("");
-      onExit();
-      window.dispatchEvent(new CustomEvent('navigate-chat', { detail: { conversationId: newConv.id } }));
+      setActiveStaffChatConvId(newConv.id);
       return;
     }
 
-    // 5. Direct redirect to Chat view as seamless fallback
+    // 5. Open staff chat modal view
     setNotice("");
-    onExit();
-    window.dispatchEvent(new CustomEvent('navigate-chat', { detail: {} }));
+    setActiveStaffChatConvId("staff");
   };
 
   useEffect(() => {
@@ -7422,6 +7418,25 @@ function StaffWorkspace({
 
   return (
     <div className="staff-workspace view">
+      {activeStaffChatConvId && session && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999999, display: 'grid', placeItems: 'center', padding: '16px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }} onClick={() => setActiveStaffChatConvId(null)}>
+          <div style={{ position: 'relative', width: 'min(100%, 980px)', height: 'min(88vh, 780px)', background: '#fff', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 35px 95px rgba(0,0,0,0.45)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: '#101d57', color: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '22px' }}>💬</span>
+                <div>
+                  <strong style={{ fontSize: '16px', display: 'block' }}>QuestKarte Staff Direct Chat</strong>
+                  <span style={{ fontSize: '11px', opacity: 0.8 }}>Secure 2-way staff messaging with photo, PDF, file attachment, and location sharing</span>
+                </div>
+              </div>
+              <button onClick={() => setActiveStaffChatConvId(null)} style={{ border: 0, background: 'rgba(255,255,255,0.18)', color: '#fff', width: '34px', height: '34px', borderRadius: '50%', fontSize: '22px', cursor: 'pointer', display: 'grid', placeItems: 'center' }}>×</button>
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <FreshChatReal session={session} />
+            </div>
+          </div>
+        </div>
+      )}
       {taskPreview && (
         <TaskDetailModal 
           quest={taskPreview} 
