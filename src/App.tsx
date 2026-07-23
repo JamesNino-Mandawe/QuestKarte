@@ -3165,24 +3165,26 @@ function FreshDiscovery({
           role="dialog"
           aria-modal="true"
           aria-label="Full marketplace map"
-          style={{ zIndex: 99999, display: 'grid', placeItems: 'center', background: 'rgba(4, 10, 34, 0.82)', backdropFilter: 'blur(8px)', padding: '20px' }}
+          style={{ zIndex: 99999, display: 'grid', placeItems: 'center', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)', padding: '20px' }}
         >
-          <div className="map-modal-card" style={{ background: '#0B132B', border: '1px solid rgba(255,255,255,0.2)', padding: 0, overflow: 'hidden', borderRadius: '24px', width: 'min(1120px, 95vw)', height: 'min(88vh, 820px)', display: 'flex', flexDirection: 'column', boxShadow: '0 30px 80px rgba(0,0,0,0.7)' }}>
-            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: 'linear-gradient(135deg, #091024, #121d3b)', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
+          <div className="map-modal-card" style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: 0, overflow: 'hidden', borderRadius: '24px', width: 'min(1120px, 95vw)', height: 'min(88vh, 820px)', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 70px rgba(15, 23, 42, 0.25)' }}>
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
               <div>
-                <span className="eyebrow" style={{ color: '#f4ce62', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.4px', fontWeight: 800, display: 'block' }}>QuestKarte Interactive Map</span>
-                <h2 style={{ margin: '4px 0 0', color: '#ffffff', fontSize: '22px', fontWeight: 800 }}>Explore Approved Tasks Nearby</h2>
+                <span className="eyebrow" style={{ color: '#1e3a8a', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.4px', fontWeight: 800, display: 'block' }}>QuestKarte Interactive Map</span>
+                <h2 style={{ margin: '4px 0 0', color: '#0f172a', fontSize: '22px', fontWeight: 800 }}>Explore Approved Tasks Nearby</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setFullMapOpen(false)}
                 aria-label="Close full map"
-                style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: '#ffffff', fontSize: 22, cursor: 'pointer', display: 'grid', placeItems: 'center', fontWeight: 'bold', transition: 'all 0.2s' }}
+                style={{ width: 38, height: 38, borderRadius: '50%', background: '#e2e8f0', border: 'none', color: '#0f172a', fontSize: 22, cursor: 'pointer', display: 'grid', placeItems: 'center', fontWeight: 'bold', transition: 'all 0.2s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#cbd5e1'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
               >
                 ×
               </button>
             </header>
-            <div className="map-modal-controls" style={{ padding: '12px 24px', background: '#0d1838', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="map-modal-controls" style={{ padding: '12px 24px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <input
                 value={locationQuery}
                 onChange={(event) => setLocationQuery(event.target.value)}
@@ -3190,14 +3192,14 @@ function FreshDiscovery({
                   if (event.key === "Enter") chooseLocation();
                 }}
                 placeholder="Search location (e.g. Lahug, IT Park, Banilad)..."
-                style={{ flex: 1, minWidth: 220, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.25)', background: '#ffffff', color: '#0f172a', outline: 'none', fontSize: 13, fontWeight: 600 }}
+                style={{ flex: 1, minWidth: 220, padding: '10px 14px', borderRadius: 10, border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', outline: 'none', fontSize: 13, fontWeight: 600, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
               />
-              <button type="button" onClick={chooseLocation} style={{ padding: '10px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #1C9286, #159b78)', color: '#fff', border: 'none', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>
+              <button type="button" onClick={chooseLocation} style={{ padding: '10px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #1d3557, #213ba3)', color: '#fff', border: 'none', fontWeight: 800, cursor: 'pointer', fontSize: 13, boxShadow: '0 2px 6px rgba(33, 59, 163, 0.25)' }}>
                 Search Location
               </button>
               {radiusControl(true)}
             </div>
-            <div style={{ flex: 1, minHeight: 400, position: 'relative', width: '100%' }}>
+            <div style={{ flex: '1 1 0%', minHeight: 0, position: 'relative', width: '100%', display: 'flex', flexDirection: 'column' }}>
               <TaskMap
                 position={position}
                 radius={radius}
@@ -3209,9 +3211,9 @@ function FreshDiscovery({
                 }}
               />
             </div>
-            <p className="map-caption" style={{ padding: '12px 24px', margin: 0, background: '#091024', borderTop: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+            <p className="map-caption" style={{ padding: '12px 24px', margin: 0, background: '#f8fafc', borderTop: '1px solid #e2e8f0', color: '#475569', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
               <span>Category Markers: 📚 Tutoring · 🧹 Cleaning · 🛵 Delivery · ✦ Design · ⚑ Other</span>
-              <strong style={{ color: '#f4ce62' }}>📍 {visibleTasks.length} approved task pin{visibleTasks.length === 1 ? "" : "s"} in this area</strong>
+              <strong style={{ color: '#1e3a8a', fontWeight: 800 }}>📍 {visibleTasks.length} approved task pin{visibleTasks.length === 1 ? "" : "s"} in this area</strong>
             </p>
           </div>
         </section>

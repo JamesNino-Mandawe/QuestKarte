@@ -62,9 +62,11 @@
 .tlc-status-badge.pending-review  { background: #fff3e6; color: #c05500; border: 1px solid #ffd3a6; animation: pulseReview 2.4s ease-in-out infinite; }
 .tlc-status-badge.completed       { background: #e6f7ee; color: #17753e; border: 1px solid #a3e0bc; }
 .tlc-status-badge.disputed        { background: #fde8e8; color: #a43030; }
+
 @keyframes pulseReview {
-  0%, 100% { box-shadow: none; }
+  0% { box-shadow: none; }
   50% { box-shadow: 0 0 0 4px rgba(192,85,0,.14); }
+  100% { box-shadow: none; }
 }
 
 /* Card body */
