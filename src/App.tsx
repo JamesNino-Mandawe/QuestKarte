@@ -4982,10 +4982,20 @@ function FreshAccount({
       supabase.from('profiles').select('trust_factor').eq('id', session.user.id).maybeSingle(),
       supabase.from('trust_events').select('points').eq('user_id', session.user.id)
     ]);
+    
+    // Auto-sync DB table row if it was stored as 100 or null
+    if (profRes.data?.trust_factor === 100 || !profRes.data?.trust_factor) {
+      await supabase.from('profiles').update({ trust_factor: 80 }).eq('id', session.user.id);
+    }
+    
     const evList = eventsRes.data || [];
-    const netSum = evList.reduce((acc: number, item: any) => acc + (item.points || 0), 0);
-    const base = profRes.data?.trust_factor ?? 80;
-    setLiveTrustScore(Math.min(100, Math.max(0, base + netSum)));
+    const hasInitial80Event = evList.some((e: any) => e.points === 80);
+    const extraPoints = hasInitial80Event 
+      ? evList.filter((e: any) => e.points !== 80).reduce((acc: number, item: any) => acc + (item.points || 0), 0)
+      : evList.reduce((acc: number, item: any) => acc + (item.points || 0), 0);
+
+    const finalScore = Math.min(100, Math.max(0, 80 + extraPoints));
+    setLiveTrustScore(finalScore);
   };
 
   useEffect(() => {
@@ -5005,7 +5015,7 @@ function FreshAccount({
   const visible = member || profile;
   const verified = visible?.verification_status === "verified";
   const displayName = visible?.full_name || "Member";
-  const trustScore = liveTrustScore !== null ? liveTrustScore : (visible?.trust_factor || 80);
+  const trustScore = liveTrustScore !== null ? liveTrustScore : (visible?.trust_factor === 100 || !visible?.trust_factor ? 80 : visible.trust_factor);
   const trustRank = getTrustRank(trustScore);
   return (
     <div className="fresh-account view">
@@ -11125,9 +11135,16 @@ function TrustHistoryModal({ onClose }: { onClose: () => void }) {
         const evList = eventsRes.data || [];
         setEvents(evList);
 
-        const netSum = evList.reduce((acc, item) => acc + (item.points || 0), 0);
-        const tfFromProfile = profRes.data?.trust_factor;
-        const calculatedTf = tfFromProfile !== undefined ? tfFromProfile : Math.min(100, Math.max(0, 80 + netSum));
+        if (profRes.data?.trust_factor === 100 || !profRes.data?.trust_factor) {
+          void supabase.from('profiles').update({ trust_factor: 80 }).eq('id', uid);
+        }
+
+        const hasInitial80Event = evList.some((e: any) => e.points === 80);
+        const extraPoints = hasInitial80Event 
+          ? evList.filter((e: any) => e.points !== 80).reduce((acc: number, item: any) => acc + (item.points || 0), 0)
+          : evList.reduce((acc: number, item: any) => acc + (item.points || 0), 0);
+
+        const calculatedTf = Math.min(100, Math.max(0, 80 + extraPoints));
         setCurrentTf(calculatedTf);
         setLoading(false);
       });
