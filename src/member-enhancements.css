@@ -37,28 +37,35 @@
 
 .map-modal-card {
   position: relative;
-  max-height: min(88vh, 720px) !important;
-  overflow-y: auto !important;
+  background: #0B132B !important;
+  color: #ffffff !important;
+  max-height: min(92vh, 850px) !important;
+  overflow: hidden !important;
 }
 
 .map-modal-card > header {
   position: sticky !important;
   top: 0 !important;
   z-index: 25 !important;
-  background: #f8fbff !important;
-  padding: 14px 16px !important;
-  border-bottom: 1px solid #e1e8f5 !important;
-  margin-bottom: 10px !important;
+  background: #091024 !important;
+  padding: 16px 24px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  margin-bottom: 0 !important;
+}
+
+.map-modal-card > header h2 {
+  color: #ffffff !important;
+  font-weight: 800 !important;
 }
 
 .map-modal-controls {
   position: sticky !important;
-  top: 60px !important;
+  top: 0 !important;
   z-index: 24 !important;
-  background: #f8fbff !important;
-  padding: 8px 16px !important;
-  border-bottom: 1px solid #e1e8f5 !important;
-  margin-bottom: 12px !important;
+  background: #0d1838 !important;
+  padding: 12px 24px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  margin-bottom: 0 !important;
 }
 
 .map-search-row input, 

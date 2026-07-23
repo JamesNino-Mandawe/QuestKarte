@@ -3165,39 +3165,39 @@ function FreshDiscovery({
           role="dialog"
           aria-modal="true"
           aria-label="Full marketplace map"
-          style={{ zIndex: 99999 }}
+          style={{ zIndex: 99999, display: 'grid', placeItems: 'center', background: 'rgba(4, 10, 34, 0.82)', backdropFilter: 'blur(8px)', padding: '20px' }}
         >
-          <div className="map-modal-card" style={{ background: '#0B132B', border: '1px solid rgba(255,255,255,0.2)', padding: 0, overflow: 'hidden', borderRadius: '24px', width: 'min(1100px, 95vw)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.6)' }}>
-            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', background: '#091024', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="map-modal-card" style={{ background: '#0B132B', border: '1px solid rgba(255,255,255,0.2)', padding: 0, overflow: 'hidden', borderRadius: '24px', width: 'min(1120px, 95vw)', height: 'min(88vh, 820px)', display: 'flex', flexDirection: 'column', boxShadow: '0 30px 80px rgba(0,0,0,0.7)' }}>
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: 'linear-gradient(135deg, #091024, #121d3b)', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
               <div>
-                <span className="eyebrow" style={{ color: '#d6ae29', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: 'bold', display: 'block' }}>QuestKarte map</span>
-                <h2 style={{ margin: '4px 0 0', color: '#ffffff', fontSize: '22px', fontWeight: 'bold' }}>Explore approved tasks</h2>
+                <span className="eyebrow" style={{ color: '#f4ce62', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.4px', fontWeight: 800, display: 'block' }}>QuestKarte Interactive Map</span>
+                <h2 style={{ margin: '4px 0 0', color: '#ffffff', fontSize: '22px', fontWeight: 800 }}>Explore Approved Tasks Nearby</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setFullMapOpen(false)}
                 aria-label="Close full map"
-                style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: '#ffffff', fontSize: 24, cursor: 'pointer', display: 'grid', placeItems: 'center', fontWeight: 'bold' }}
+                style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: '#ffffff', fontSize: 22, cursor: 'pointer', display: 'grid', placeItems: 'center', fontWeight: 'bold', transition: 'all 0.2s' }}
               >
                 ×
               </button>
             </header>
-            <div className="map-modal-controls" style={{ padding: '14px 24px', background: '#0d1838', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="map-modal-controls" style={{ padding: '12px 24px', background: '#0d1838', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <input
                 value={locationQuery}
                 onChange={(event) => setLocationQuery(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") chooseLocation();
                 }}
-                placeholder="Lahug, IT Park, Banilad, or latitude, longitude"
-                style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: '#ffffff', outline: 'none' }}
+                placeholder="Search location (e.g. Lahug, IT Park, Banilad)..."
+                style={{ flex: 1, minWidth: 220, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.25)', background: '#ffffff', color: '#0f172a', outline: 'none', fontSize: 13, fontWeight: 600 }}
               />
-              <button type="button" onClick={chooseLocation} style={{ padding: '10px 18px', borderRadius: 10, background: '#213ba3', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>
-                Search
+              <button type="button" onClick={chooseLocation} style={{ padding: '10px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #1C9286, #159b78)', color: '#fff', border: 'none', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>
+                Search Location
               </button>
               {radiusControl(true)}
             </div>
-            <div style={{ flex: 1, minHeight: 380, maxHeight: '60vh', position: 'relative' }}>
+            <div style={{ flex: 1, minHeight: 400, position: 'relative', width: '100%' }}>
               <TaskMap
                 position={position}
                 radius={radius}
@@ -3209,10 +3209,9 @@ function FreshDiscovery({
                 }}
               />
             </div>
-            <p className="map-caption" style={{ padding: '12px 24px', margin: 0, background: '#091024', borderTop: '1px solid rgba(255,255,255,0.08)', color: '#879cbd', fontSize: '12px' }}>
-              Category markers: tutoring 📚 · cleaning 🧹 · delivery 🛵 · design
-              ✦ · other ⚑. {visibleTasks.length} approved task pin
-              {visibleTasks.length === 1 ? "" : "s"} in this area.
+            <p className="map-caption" style={{ padding: '12px 24px', margin: 0, background: '#091024', borderTop: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <span>Category Markers: 📚 Tutoring · 🧹 Cleaning · 🛵 Delivery · ✦ Design · ⚑ Other</span>
+              <strong style={{ color: '#f4ce62' }}>📍 {visibleTasks.length} approved task pin{visibleTasks.length === 1 ? "" : "s"} in this area</strong>
             </p>
           </div>
         </section>
