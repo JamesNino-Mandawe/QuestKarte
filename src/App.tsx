@@ -1812,7 +1812,7 @@ function MarketplaceFeed({ onPost }: { onPost: () => void }) {
     const { data, error } = await supabase
       .from("tasks")
       .select(
-        "id,title,description,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,location_label,published_at,created_at,category:categories(name),poster:profiles!tasks_posted_by_fkey(full_name,trust_factor,avatar_url)",
+        "id,title,description,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,location_label,published_at,created_at,payment_type,category:categories(name),poster:profiles!tasks_posted_by_fkey(full_name,trust_factor,avatar_url)",
       )
       .eq("status", "open")
       .order("published_at", { ascending: false });
@@ -1856,6 +1856,7 @@ function MarketplaceFeed({ onPost }: { onPost: () => void }) {
                 commission: task.is_service_swap
                   ? task.swap_details || "Service swap"
                   : `${task.currency === "PHP" ? "₱" : ""}${Number(task.commission_amount || 0).toLocaleString()}`,
+                paymentType: (task as any).payment_type || "cash",
                 location: task.location_label,
                 schedule: task.published_at
                   ? `Posted ${new Date(task.published_at).toLocaleDateString()}`
@@ -1931,6 +1932,7 @@ type SharedMarketplaceTask = {
   location_label: string;
   published_at: string | null;
   created_at: string;
+  payment_type?: string | null;
   images: string[];
   categoryName: string;
   posterName: string;
@@ -1976,7 +1978,7 @@ function MarketplaceFeedLive({
     const { data: taskData, error: taskError } = await supabase
       .from("tasks")
       .select(
-        "id,posted_by,category_id,title,description,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,location_label,published_at,created_at",
+        "id,posted_by,category_id,title,description,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,location_label,published_at,created_at,payment_type",
       )
       .eq("status", "open")
       .order("published_at", { ascending: false });
@@ -2109,6 +2111,7 @@ function MarketplaceFeedLive({
     commission: task.is_service_swap
       ? task.swap_details || "Service swap"
       : `${task.currency === "PHP" ? "PHP " : ""}${Number(task.commission_amount || 0).toLocaleString()}`,
+    paymentType: task.payment_type || "cash",
     location: task.location_label,
     schedule: task.published_at
       ? `Posted ${new Date(task.published_at).toLocaleDateString()}`
@@ -2609,7 +2612,7 @@ function MarketplaceFeedGuest({ onJoin }: { onJoin: () => void }) {
     const { data, error } = await supabase
       .from("tasks")
       .select(
-        "id,posted_by,category_id,title,description,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,location_label,published_at",
+        "id,posted_by,category_id,title,description,commission_amount,currency,is_service_swap,swap_details,requires_student_verification,location_label,published_at,payment_type",
       )
       .eq("status", "open")
       .eq("moderation_state", "approved")
@@ -2688,6 +2691,7 @@ function MarketplaceFeedGuest({ onJoin }: { onJoin: () => void }) {
                   commission: task.is_service_swap
                     ? task.swap_details || "Service swap"
                     : `${task.currency === "PHP" ? "PHP " : ""}${Number(task.commission_amount || 0).toLocaleString()}`,
+                  paymentType: (task as any).payment_type || "cash",
                   location: task.location_label,
                   schedule: task.published_at
                     ? `Posted ${new Date(task.published_at).toLocaleDateString()}`
@@ -5781,6 +5785,7 @@ function PostTask({
     useEffect(() => { localStorage.setItem('draft-title', title); }, [title]);
     useEffect(() => { localStorage.setItem('draft-desc', description); }, [description]);
   const [commission, setCommission] = useState("");
+  const [paymentType, setPaymentType] = useState<"cash" | "gcash">("cash");
   const [location, setLocation] = useState("");
   const [savingTask, setSavingTask] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -5831,6 +5836,7 @@ function PostTask({
         is_service_swap: swap,
         swap_details: swap ? "Service swap offered" : null,
         requires_student_verification: studentOnly,
+        payment_type: swap ? "swap" : paymentType,
         location_label: location.trim(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
@@ -5914,6 +5920,47 @@ function PostTask({
               placeholder="₱ Amount"
             />
           </label>
+          {!swap && (
+            <div className="field-group">
+              <span className="field-label">Payment Method</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setPaymentType("cash")}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: 10,
+                    border: paymentType === "cash" ? '2px solid #059669' : '1px solid #cbd5e1',
+                    background: paymentType === "cash" ? '#ecfdf5' : '#ffffff',
+                    color: paymentType === "cash" ? '#047857' : '#64748b',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                  }}
+                >
+                  💵 Cash
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentType("gcash")}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: 10,
+                    border: paymentType === "gcash" ? '2px solid #0284c7' : '1px solid #cbd5e1',
+                    background: paymentType === "gcash" ? '#e0f2fe' : '#ffffff',
+                    color: paymentType === "gcash" ? '#0369a1' : '#64748b',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                  }}
+                >
+                  📱 GCash
+                </button>
+              </div>
+            </div>
+          )}
           <label className="field-group">
             <span className="field-label">General area</span>
             <input
@@ -5966,6 +6013,7 @@ function PostTask({
             avatarUrl: profile?.avatar_url,
                 initials: (profile?.full_name || "You").slice(0, 2).toUpperCase(),
             kind: swap ? "swap" : studentOnly ? "student" : undefined,
+            paymentType: swap ? "swap" : paymentType,
           }}
         />
       </aside>
@@ -6913,6 +6961,7 @@ function StaffWorkspace({
       trust: `Trust Factor ${poster?.trust_factor || 0}`,
       initials: (poster?.full_name || "QM").slice(0, 2).toUpperCase(),
       kind: task.is_service_swap ? "swap" : task.requires_student_verification ? "student" : undefined,
+      paymentType: (task as any).payment_type || "cash",
       images,
     });
   };
